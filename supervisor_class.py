@@ -18,6 +18,7 @@ from comm_protocol.src import find_devices
 from comm_protocol.src.Shield_Class import Shield_Device
 
 import lib.tools as tools
+from lib.phase_sweep import phase_sweep_values
 
 
 # Expand module path if needed
@@ -346,7 +347,8 @@ class Supervisor:
         if self.microcontroller is None:
             raise ValueError("Microcontroller is not opened.")
 
-        for phase_val in range(phase_init, phase_final+2, step):
+        # float-safe (ticket #9); integer configs give exactly the old range(phase_init, phase_final+2, step)
+        for phase_val in phase_sweep_values(phase_init, phase_final, step):
             msg = self.microcontroller.sendCommand("PHASE_SHIFT", "LEG2", phase_val, delay=self.delay_com)
             print(f"Set phase shift={phase_val}, msg={msg}")
 

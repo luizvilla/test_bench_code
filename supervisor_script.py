@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import pyvisa as visa
 
 import shutil
+import sys
 
 from supervisor_class import Supervisor
 
@@ -218,7 +219,8 @@ def runner(config_path):
 if __name__ == "__main__":
     tool = TOOL()
 
-    base_config_path = os.path.join("base-config.json")
+    # Optional argument: path to a base config (default: base-config.json in the current folder)
+    base_config_path = sys.argv[1] if len(sys.argv) > 1 else "base-config.json"
     with open(base_config_path, 'r') as f:
         base_config = json.load(f)
 
@@ -244,4 +246,4 @@ if __name__ == "__main__":
         time.sleep(2)
 
     #copy the base-config.json file to the experiment folder for reference
-    shutil.copy(os.path.join("base-config.json"), os.path.join(folder_parent, folder_experiment, "base-config-original.json"))
+    shutil.copy(base_config_path, os.path.join(folder_parent, folder_experiment, "base-config-original.json"))
