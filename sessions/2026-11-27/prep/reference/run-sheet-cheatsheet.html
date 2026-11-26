@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bench Day Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="nav"><a href="../lessons/0001-run-sheet-quiz.html">← Quiz</a><a href="../../RUN_SHEET.md">Full run sheet</a><a href="https://github.com/luizvilla/test_bench_code/issues/12">#12</a></div>
+
+<h1>27 November: bench-day cheat sheet</h1>
+<p class="subtitle">Open-Power loss campaign · 60 V · 3.5 A peak (7 points, 0.5–3.5 A) · 300 ns dead time · D = 0.5 · L = 40 µH · condensed from <a href="../../RUN_SHEET.md">RUN_SHEET.md</a></p>
+
+<section>
+<h2>Tonight: close #12</h2>
+<ul class="check">
+  <li>Read <a href="../../RUN_SHEET.md">RUN_SHEET.md</a> end to end; take the <a href="../lessons/0001-run-sheet-quiz.html">quiz</a> until you get 12/12.</li>
+  <li>Close <a href="https://github.com/luizvilla/test_bench_code/issues/12">#12</a>: <code>gh issue close 12 -R luizvilla/test_bench_code</code>. This unblocks #13 on the map.</li>
+  <li>Pack the fallback: the string firmware <code>owntech/spin_code_compiled.mcuboot.bin</code> (branch <code>ReleaseCandidate</code>) on the laptop.</li>
+</ul>
+</section>
+
+<section>
+<h2>0 · Before power (≈ 20 min)</h2>
+<ul class="check">
+  <li><code>git fetch && git checkout session-2026-11-27 && git pull</code> · <code>python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt</code>. Run everything in this venv.</li>
+  <li>Flash <strong><code>firmware/bench-thingset-554f8b9a.mcuboot.bin</code></strong> (Firmware flasher widget, or <code>pio run -e USB -t upload</code> at core <code>554f8b9a</code>; use <code>~/.platformio/penv/bin/pio</code>)</li>
+  <li><code>ls -l /dev/serial/by-id/</code>: <code>TWIST_V1_4_2</code>, ThingSet = <strong><code>…-if02</code></strong>. Never open <code>-if00</code> at 1200 baud (it reboots into the bootloader). If there's more than one SPIN, set <code>"shield_serial"</code> in the configs.</li>
+  <li>Smoke test, no HV:
+<pre><code>python3 -c "from lib.thingset_shield import ThingSetShield as T; s=T.open(); print(s.sendCommand('FREQUENCY','LEG1',50000), s.sendCommand('PHASE_SHIFT','LEG2',10.5))"</code></pre>
+  Scope: <strong>50 kHz</strong>, LEG2 lags <strong>0.583 µs</strong>, GPIO 9 (PC7) pulses <strong>2.1 ms</strong> after the phase write.</li>
+  <li>Scope: ch1 <code>FREQ</code>, ch2 = inductor current (<code>AMPL</code> peak-to-peak, <code>RMS</code>), trigger from GPIO 9.</li>
+  <li>Supply: <code>CurrentLimit</code> 0.5 A in the configs (≈ 30 W cap).</li>
+</ul>
+</section>
+
+<section>
+<h2>1 · Anchors 50 / 60 / 70 kHz (≈ 10 min), then go / no-go</h2>
+<pre><code>python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json
+python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/A_anchors</code></pre>
+<table>
+  <tr><th>Anchor</th><th>September fit: 17.43 mW/kHz · f + 3.22 W</th></tr>
+  <tr><td class="num">50 kHz</td><td class="num">≈ 4.09 W</td></tr>
+  <tr><td class="num">60 kHz</td><td class="num">≈ 4.27 W</td></tr>
+  <tr><td class="num">70 kHz</td><td class="num">≈ 4.44 W</td></tr>
+</table>
+<p>Ipeak = <code>AMPL</code>/2 by default; cross-check with <code>--ipeak phase</code>.</p>
+<div class="callout stop"><strong>No-go</strong> if P_remaining or the two Ipeak readings disagree by more than September's scatter. Check the inductor value, probe scaling and scope measurement <em>before</em> starting the grid.</div>
+</section>
+
+<section>
+<h2>2 · Grid: 23 points, 10–100 kHz (≈ 45–60 min)</h2>
+<pre><code>python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json
+python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/B_grid -o sessions/2026-11-27/B_grid_breakdown.csv</code></pre>
+<ul class="check">
+  <li>&lt; 30 kHz: small phases (2.4–45°). This firmware handles them (±0.05°).</li>
+  <li>Highest phase: 168° at 100 kHz / 3.5 A (limit 175°).</li>
+  <li><strong>Capacitor resonance</strong> (electrolytic, 125 mΩ ESR): <em>write down</em> the frequencies where the waveforms or P_remaining jump. Exclude them later, not now.</li>
+  <li>Runs follow <code>os.walk</code> order, not sorted by frequency. That's expected.</li>
+</ul>
+</section>
+
+<section>
+<h2>3 · Optional: dead-time compensation A/B</h2>
+<p>Copy the anchors group under a new <code>Experiment_name</code> (e.g. <code>A_anchors_dtc</code>) with <code>"DeadTimeComp": 1</code>, regenerate, and run it. The duty becomes D − td·f/2 (<span class="num">0.485</span> at 100 kHz). Compare the mean of iL on the scope and P_remaining against the plain anchors.</p>
+<p class="sidenote">A group won't run twice (<code>base-config-original.json</code> guard). To rerun, change <code>Experiment_name</code> and regenerate.</p>
+</section>
+
+<section>
+<h2>4 · When to stop, and the fallback</h2>
+<div class="callout stop"><strong>Stop if:</strong> a write is refused (<code>ThingSetShieldError</code> in the log) · the scope trigger is missing · the gate signals don't match the commanded phase.<br>
+<strong>Stopping mid-run:</strong> Ctrl-C, then switch the supply output off on its front panel. The SPIN stops its legs on <code>IDLE</code>/<code>POWER_OFF</code>.</div>
+<p><strong>Fallback:</strong> flash <code>owntech/spin_code_compiled.mcuboot.bin</code> and set <code>"shield_protocol": "string"</code>, <code>"shield_pid": 257</code> in the configs.<br>
+Limits: <strong>whole degrees only</strong> and <strong>nothing below 50 kHz</strong>. Only the anchors and the grid points ≥ 55 kHz can run.</p>
+</section>
+
+<section>
+<h2>5 · Ask Nicolas</h2>
+<ul class="check">
+  <li>Dead-time term: why −4·(td/Ts)·Rmos·<strong>Ipeak²</strong> and not P_mos·(1 − td/Ts)?</li>
+  <li>"I DC condo" (under <em>Simu</em>): is it the measured DC input current?</li>
+  <li>Confirm Ipeak = AMPL/2 against the anchors.</li>
+  <li>Screen RMS or cycle RMS (<code>CRMS</code>)? Which one did the workbook use?</li>
+  <li>Fit grouping: is one step index the same peak current at every frequency?</li>
+  <li>Access to the LAPLACE share for the 16 Sept raw data (ticket #15).</li>
+</ul>
+</section>
+
+<section>
+<h2>6 · Before leaving the lab</h2>
+<ul class="check">
+  <li><strong>Copy <code>sessions/2026-11-27/configs/</code> to lab storage.</strong> The results are git-ignored, so this copy is the only one.</li>
+  <li>Write down the excluded (resonance) frequencies and why.</li>
+  <li>Then ticket #13: run the script on both groups and write the session report.</li>
+</ul>
+</section>
+
+<p class="ask noprint">Something unclear? Ask your agent: it is your teacher for this.</p>
+</body>
+</html>

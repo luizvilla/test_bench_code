@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Sheet Quiz</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="nav"><a href="../reference/run-sheet-cheatsheet.html">Cheat sheet →</a><a href="../../RUN_SHEET.md">Full run sheet</a><a href="https://github.com/luizvilla/test_bench_code/issues/12">#12</a></div>
+
+<h1>Can you run tomorrow without the sheet?</h1>
+<p class="subtitle">Lesson 1 · 12 questions · about 5 minutes</p>
+
+<p>Tomorrow's session goes well if a few decisions are already in your head: what to flash, what "good" looks like on the anchors, when to stop, and what the fallback can't do. Answer from memory first. Each answer comes with the reason and where it's written down. Retake the quiz tomorrow morning before you power anything: recalling it a second time, after a night's sleep, is what makes it stick.</p>
+
+<p class="sidenote">Primary source: <a href="../../RUN_SHEET.md">sessions/2026-11-27/RUN_SHEET.md</a>, plus <a href="../../../../firmware/README.md">firmware/README.md</a> for the board details. Read the run sheet once after the quiz, then close <a href="https://github.com/luizvilla/test_bench_code/issues/12">#12</a>.</p>
+
+<div id="quiz"></div>
+<script type="application/json" id="quiz-data">
+[
+ {"q": "Which binary goes on the bench SPIN first thing?",
+  "options": ["String build, branch ReleaseCandidate", "ThingSet build, commit 8111a0dc", "ThingSet build, commit 554f8b9a", "String build, branch power_tuesday"],
+  "answer": 2,
+  "why": "<code>firmware/bench-thingset-554f8b9a.mcuboot.bin</code>: ThingSet, fractional phase, 10 kHz minimum, dead-time compensation. 8111a0dc is the upstream base, and the string build is only the fallback. (Run sheet §0.2)"},
+ {"q": "Which serial port does the supervisor use to talk ThingSet?",
+  "options": ["the …-if00 port", "the …-if02 port", "the …-if01 port", "the ttyACM9 port"],
+  "answer": 1,
+  "why": "Interface 2 is ThingSet. <code>-if00</code> is the console; never open it at 1200 baud, because that reboots the SPIN into the bootloader. (firmware/README)"},
+ {"q": "Smoke test: 50 kHz, you write 10.5° on LEG2. What lag do you expect on the scope?",
+  "options": ["≈ 0.292 µs lag", "≈ 1.167 µs lag", "≈ 0.210 µs lag", "≈ 0.583 µs lag"],
+  "answer": 3,
+  "why": "10.5/360 × 20 µs = 0.583 µs. You should also see GPIO 9 (PC7) pulse for 2.1 ms after the write. (Run sheet §0.4)"},
+ {"q": "Why do the 50/60/70 kHz anchors run before the grid?",
+  "options": ["Check against September before spending the grid", "Warm the inductor before the low frequencies", "The supervisor requires sorted frequencies in order", "Anchors calibrate the scope probe scaling automatically"],
+  "answer": 0,
+  "why": "It's a go/no-go: if the anchors don't reproduce September (17.43 mW/kHz · f + 3.22 W), you'd be spending an hour of grid on a setup problem. The supervisor doesn't sort anything: inside a group it follows <code>os.walk</code> order. (Run sheet §1)"},
+ {"q": "Roughly what P_remaining should the 60 kHz anchor give if it matches September?",
+  "options": ["≈ 3.22 W", "≈ 4.09 W", "≈ 4.27 W", "≈ 4.44 W"],
+  "answer": 2,
+  "why": "17.43 mW/kHz × 60 + 3.22 W ≈ 4.27 W. 4.09 W is the 50 kHz value, 4.44 W the 70 kHz one, and 3.22 W is only the intercept (the fixed term)."},
+ {"q": "By default, how does the processing script get Ipeak?",
+  "options": ["RMS ch2 times root two", "AMPL ch2 divided by two", "AMPL ch2 taken as is", "Phase formula, scope ignored entirely"],
+  "answer": 1,
+  "why": "The scope's <code>AMPL</code> is peak-to-peak, so Ipeak = AMPL/2 (<code>--ipeak scope-pp</code>). <code>--ipeak phase</code> is the cross-check on the anchors. (calculations/README Q3)"},
+ {"q": "Which of these means \"stop and investigate\" during the run?",
+  "options": ["A waveform jumps near capacitor resonance", "Phases below 45° at low frequencies", "Supply current reads about 0.4 A", "ThingSetShieldError shows up in the log"],
+  "answer": 3,
+  "why": "A refused write, a missing scope trigger, or gate signals that don't match the commanded phase all mean stop. Resonance jumps get noted, small phases are expected below 30 kHz, and 0.4 A is still under the 0.5 A limit. (Run sheet §4)"},
+ {"q": "The new firmware misbehaves and you fall back to the string firmware. What does it cost you?",
+  "options": ["Fractional degrees, nothing above 70 kHz", "Whole degrees, nothing below 50 kHz", "Whole degrees, nothing above 50 kHz", "Fractional degrees, nothing below 30 kHz"],
+  "answer": 1,
+  "why": "The old firmware truncates phases to whole degrees and keeps the Twist's 50 kHz minimum, so only the anchors and the grid points ≥ 55 kHz can run. It also needs <code>\"shield_protocol\": \"string\"</code> and <code>\"shield_pid\": 257</code>. (Run sheet §4)"},
+ {"q": "A few grid points show waveform or P_remaining jumps (capacitor resonance). What do you do?",
+  "options": ["Skip them, rerun the whole group", "Stop and raise the current limit", "Note them now, exclude them later", "Switch dead-time compensation on for those"],
+  "answer": 2,
+  "why": "Write down the frequencies and keep going. Excluding them is an analysis decision for ticket #13, not something to decide at the bench. (Run sheet §2)"},
+ {"q": "With dead-time compensation on, what open-loop duty does each leg get at 100 kHz / 300 ns?",
+  "options": ["D ≈ 0.485", "D ≈ 0.470", "D ≈ 0.500", "D ≈ 0.515"],
+  "answer": 0,
+  "why": "D − td·f/2 = 0.5 − 300 ns × 100 kHz / 2 = 0.485. It's recomputed every control period, and it's off by default (<code>\"DeadTimeComp\": 1</code> turns it on). (firmware/README)"},
+ {"q": "Before you leave the lab, which step can't be skipped?",
+  "options": ["Copy the configs folder to storage", "Git commit the whole results folder", "Push the session branch to GitHub", "Close ticket 13 on the tracker"],
+  "answer": 0,
+  "why": "Results are written next to the configs and are git-ignored, so the lab-storage copy is the only copy. Ticket #13 comes after the session. (Run sheet §6)"},
+ {"q": "You want to rerun the anchors with compensation on. The supervisor refuses. Why, and what's the fix?",
+  "options": ["SPIN locked: power-cycle the board", "Old CSV present: delete results", "Needs --force: pass the flag", "Group guard: rename Experiment_name, regenerate"],
+  "answer": 3,
+  "why": "The <code>base-config-original.json</code> guard stops a group from running twice. Copy the group under a new <code>Experiment_name</code> (e.g. <code>A_anchors_dtc</code>) and regenerate. (sessions README, Run sheet §3)"}
+]
+</script>
+<script src="../assets/quiz.js"></script>
+
+<h2>Your win</h2>
+<p>12/12 means you can run the session from the <a href="../reference/run-sheet-cheatsheet.html">one-page cheat sheet</a> instead of the full run sheet. Print it, then <code>gh issue close 12 -R luizvilla/test_bench_code</code>.</p>
+
+<p class="ask">If a question tripped you up, or something in the run sheet looks wrong, ask your agent. It's your teacher here, and can fix the run sheet before tomorrow.</p>
+</body>
+</html>

@@ -1,0 +1,76 @@
+/* Shared stylesheet for the session-prep lessons and reference sheets. */
+:root {
+  --ink: #1d1d1b;
+  --muted: #6b6b66;
+  --rule: #d8d6cf;
+  --paper: #fffef8;
+  --accent: #8a2b0f;
+  --ok: #2b6e3a;
+  --ok-bg: #e7f3e9;
+  --bad: #a1261c;
+  --bad-bg: #fbe9e7;
+  --code-bg: #f3f1e8;
+}
+* { box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  margin: 0 auto;
+  max-width: 46rem;
+  padding: 2.5rem 1.25rem 4rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.5;
+}
+h1 { font-weight: 400; font-size: 2rem; margin: 0 0 .25rem; line-height: 1.15; }
+h2 { font-weight: 400; font-style: italic; font-size: 1.35rem; margin: 2.2rem 0 .6rem; border-bottom: 1px solid var(--rule); padding-bottom: .2rem; }
+h3 { font-size: 1rem; margin: 1.4rem 0 .4rem; }
+.subtitle { color: var(--muted); font-style: italic; margin: 0 0 1.5rem; }
+a { color: var(--accent); }
+code, pre, kbd { font-family: "JetBrains Mono", "DejaVu Sans Mono", Menlo, monospace; font-size: .82em; }
+code { background: var(--code-bg); padding: .05em .3em; border-radius: 3px; }
+pre { background: var(--code-bg); padding: .7rem .9rem; overflow-x: auto; border-left: 3px solid var(--rule); line-height: 1.4; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: .6rem 0 1rem; font-size: .92rem; }
+th, td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.callout { border-left: 3px solid var(--accent); padding: .4rem .9rem; margin: 1rem 0; background: #fbf6ee; }
+.callout.stop { border-color: var(--bad); background: var(--bad-bg); }
+.callout.go { border-color: var(--ok); background: var(--ok-bg); }
+.sidenote { color: var(--muted); font-size: .85rem; }
+.nav { font-size: .85rem; color: var(--muted); margin-bottom: 1.5rem; }
+.nav a { margin-right: 1rem; }
+.ask { margin-top: 2.5rem; padding-top: .8rem; border-top: 1px solid var(--rule); color: var(--muted); font-style: italic; }
+
+/* checklists */
+ul.check { list-style: none; padding-left: 0; }
+ul.check li { padding-left: 1.6rem; position: relative; margin: .35rem 0; }
+ul.check li::before { content: "☐"; position: absolute; left: 0; top: -.05rem; font-size: 1.1rem; color: var(--muted); }
+
+/* quiz component (assets/quiz.js) */
+.quiz-q { margin: 1.6rem 0; }
+.quiz-q .stem { font-weight: 600; margin-bottom: .5rem; }
+.quiz-q .stem .n { color: var(--muted); font-weight: 400; margin-right: .4rem; }
+.quiz-q button.opt {
+  display: block; width: 100%; text-align: left; margin: .3rem 0; padding: .45rem .7rem;
+  font: inherit; font-size: .95rem; color: var(--ink); background: #fff;
+  border: 1px solid var(--rule); border-radius: 4px; cursor: pointer;
+}
+.quiz-q button.opt:hover:not(:disabled) { border-color: var(--ink); }
+.quiz-q button.opt:disabled { cursor: default; }
+.quiz-q button.opt.right { background: var(--ok-bg); border-color: var(--ok); }
+.quiz-q button.opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.quiz-q .why { display: none; font-size: .9rem; margin-top: .4rem; padding: .4rem .7rem; border-left: 3px solid var(--rule); }
+.quiz-q.answered .why { display: block; }
+.quiz-score { position: sticky; bottom: 0; background: var(--paper); border-top: 1px solid var(--rule); padding: .5rem 0; font-size: .9rem; color: var(--muted); }
+.quiz-score button { font: inherit; font-size: .85rem; margin-left: 1rem; }
+
+@media print {
+  html { font-size: 11pt; }
+  body { max-width: none; padding: 0; background: #fff; }
+  .nav, .ask, .quiz-score, .noprint { display: none; }
+  h2 { break-after: avoid; }
+  pre, table, .callout, section { break-inside: avoid; }
+  a { color: var(--ink); text-decoration: none; }
+}
