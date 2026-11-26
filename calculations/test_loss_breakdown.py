@@ -100,7 +100,7 @@ def write_session(tmp_path, inputs):
         (d / "csv-10_00_00-16_09_2026-Current.csv").write_text(json.dumps([p["i_dc_A"]] * 5))
         (d / "results.json").write_text(json.dumps({"Data1": {
             "1": {"type": "FREQ", "channel": 1, "value": f * 1000.0},
-            "2": {"type": "AMPL", "channel": 2, "value": p["ipeak_A"]},
+            "2": {"type": "AMPL", "channel": 2, "value": 2 * p["ipeak_A"]},
             **({} if p["irms_ind_A"] is None else
                {"3": {"type": "RMS", "channel": 2, "value": p["irms_ind_A"]}}),
         }}))

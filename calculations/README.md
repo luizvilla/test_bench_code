@@ -72,3 +72,15 @@ checks that the CLI reproduces the same numbers from it.
 The raw files of the 16 Sept session (DMM CSVs, scope captures) were not found
 in the repository, so the reference check uses the workbook's own measured
 inputs (Vbus, DC current, Ipeak, scope Irms).
+
+## Open questions on the model (for Nicolas, session of 2026-11-27)
+
+The script follows the reference workbook formula by formula (decision 2026-11-26: keep the formulas for now). Questions to settle with Nicolas:
+
+1. **Dead-time correction of the MOSFET conduction loss (sheet `Calcul`, row 33).** The session report says P_mos × (1 − td/Ts); the workbook computes P_mos = Rmos·Irms² − 4·(td/Ts)·Rmos·Ipeak². Why the factor 4, and why Ipeak² rather than Irms²?
+2. **Input power.** P_in = "I DC condo" × Vbus, with "I DC condo" under a section labelled *Simu*. Is it the measured DC input current?
+3. **Peak current.** The scope `AMPL` is peak-to-peak (Luiz, 2026-11-26), so Ipeak = AMPL / 2 is now the default (`--ipeak scope-pp`); `--ipeak phase` (Vbus·φ/180/(4·L·f)) is the cross-check. Confirm on the anchor points.
+4. **Scope RMS current.** The 2026-11-27 configs add `{"type": "RMS", "channel": 2}` to `ScopeAutoMeasure`, assuming channel 2 is the inductor current; without it the script falls back to the RMS equation (row 46). RMS over the screen vs cycle RMS (`CRMS`): which one did the workbook use?
+5. **The 3.22 W intercept** is the least-squares intercept; the per-point P_fixed (row 43) are 3.2174, 3.2261, 3.2174 W.
+6. **Fit grouping.** Points are grouped by bus voltage and phase-step index across frequencies; this assumes one step index = one peak current at every frequency, true when the phase table scales with f (as the generator does).
+7. **Raw data of 2026-09-16.** Not in the repo; it is on the LAPLACE share (`COMMUN\CS_Banc_Caract_Pertes_T\Documentation\réunions\2026\Session-Octobre2026`), with the HV capacitor characterisation. Running the script on it closes the check against raw data.

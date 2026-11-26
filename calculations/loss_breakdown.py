@@ -215,15 +215,15 @@ IPEAK_SOURCES = ("scope", "scope-pp", "phase")
 
 
 def load_session_folder(
-    folder: str, circuit: dict | None = None, ipeak_source: str = "scope"
+    folder: str, circuit: dict | None = None, ipeak_source: str = "scope-pp"
 ) -> pd.DataFrame:
     """Operating points of a supervisor session folder.
 
     ``folder`` is ParentFolder/Experiment_name (or its PhaseShift sub-folder).
     For each PhaseShift/Voltage_<V>_<F>kHz and each phase step:
       * Vbus, I_dc : step means of the DMM voltage/current CSVs (TraitementV10)
-      * Ipeak      : ipeak_source = "scope"    -> scope 'AMPL' value (TraitementV10 convention)
-                                    "scope-pp" -> scope 'AMPL' / 2 (if AMPL is peak-to-peak)
+      * Ipeak      : ipeak_source = "scope-pp" -> scope 'AMPL' / 2 (default: AMPL is peak-to-peak, Luiz 2026-11-26)
+                                    "scope"    -> scope 'AMPL' value as-is (old TraitementV10 convention)
                                     "phase"    -> Vbus*phase/180 / (4 L f) from the PhaseTab
       * Irms_ind   : scope measurement 'RMS' if present, else NaN (-> equation)
       * f, td, L   : frequencyPWM, DeadTimePWM [ns], InductorL [uH] of the PhaseShift json
@@ -288,7 +288,7 @@ def load_session_folder(
     return pd.DataFrame(rows, columns=INPUT_COLUMNS)
 
 
-def load(source: str, circuit: dict | None = None, ipeak_source: str = "scope") -> pd.DataFrame:
+def load(source: str, circuit: dict | None = None, ipeak_source: str = "scope-pp") -> pd.DataFrame:
     if os.path.isdir(source):
         return load_session_folder(source, circuit, ipeak_source)
     if source.lower().endswith((".xlsx", ".xlsm")):
@@ -315,8 +315,8 @@ def main(argv=None) -> int:
     ap.add_argument("-o", "--output", help="write the full per-point breakdown to this CSV")
     ap.add_argument("--params", help="JSON file overriding circuit parameters "
                     f"({', '.join(DEFAULT_CIRCUIT)})")
-    ap.add_argument("--ipeak", choices=IPEAK_SOURCES, default="scope",
-                    help="session folders only: where Ipeak comes from (default: scope AMPL)")
+    ap.add_argument("--ipeak", choices=IPEAK_SOURCES, default="scope-pp",
+                    help="session folders only: where Ipeak comes from (default: scope AMPL/2, AMPL is peak-to-peak)")
     a = ap.parse_args(argv)
     circuit = json.load(open(a.params)) if a.params else None
     with np.errstate(invalid="ignore"):

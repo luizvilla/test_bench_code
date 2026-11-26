@@ -59,6 +59,10 @@
         {
             "type": "AMPL",
             "channel": 2
+        },
+        {
+            "type": "RMS",
+            "channel": 2
         }
     ],
     "ScopeAutoMeasureHigh": [
