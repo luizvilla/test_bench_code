@@ -56,7 +56,7 @@ def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, fre
             min_val = int(np.min(column_data))
             max_val = np.max(column_data)
             voltage = int(voltageRange[i])
-            phase_init, phase_final, phase_step = phaseSweepBounds(column_data)
+            phase_init, phase_final, phase_step = phaseSweepBounds(column_data) if mode == "Phase" else (None, None, None)
 
             # Création du dossier Voltage_XX_YYYkHz
             subfolder_name = f"Voltage_{voltage}_{freq_khz}kHz"
