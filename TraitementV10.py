@@ -11,6 +11,44 @@ import re
 # (voir description plus haut)
 
 
+def read_supervisor_series(path):
+    """Read a supervisor DMM CSV (JSON list, one-row JSON, or one column) into a list of floats.
+
+    Shared with calculations/loss_breakdown.py.
+    """
+    with open(path) as f:
+        raw_str = f.read().strip()
+    if raw_str.startswith("["):
+        return json.loads(raw_str)
+    df_tmp = pd.read_csv(path, header=None)
+    if df_tmp.shape[0] == 1:
+        return json.loads(df_tmp.iloc[0, 0])
+    if df_tmp.shape[1] == 1:
+        return df_tmp.iloc[:, 0].dropna().tolist()
+    raise ValueError(f"Unrecognized format in {path}")
+
+
+def segment_means(cour, tens, nbI):
+    """Split the DMM current/voltage series into nbI equal steps.
+
+    Returns [(I_moy, V_moy), ...] per step (I_moy is voltage-weighted), or [] if
+    there are fewer samples than steps. Shared with calculations/loss_breakdown.py.
+    """
+    cour = pd.Series(cour, dtype=float).reset_index(drop=True)
+    tens = pd.Series(tens, dtype=float).reset_index(drop=True)
+    pts = min(len(cour), len(tens))
+    valid = (pts // nbI) * nbI
+    if valid == 0:
+        return []
+    seg = valid // nbI
+    out = []
+    for i in range(nbI):
+        I_vals = cour.iloc[i*seg:(i+1)*seg].values
+        V_vals = tens.iloc[i*seg:(i+1)*seg].values
+        I_moy = (I_vals * V_vals).sum() / V_vals.sum() if V_vals.sum() != 0 else float('nan')
+        out.append((I_moy, V_vals.mean()))
+    return out
+
 
 def traiter_dossier(path, folder, excel_folder=None):
     print(f"\n[Conversion] Folder {folder}")
@@ -25,18 +63,7 @@ def traiter_dossier(path, folder, excel_folder=None):
 
     if fichier_tension:
         try:
-            with open(fichier_tension) as f:
-                raw_str = f.read().strip()
-                if raw_str.startswith("["):
-                    raw = json.loads(raw_str)
-                else:
-                    df_tmp = pd.read_csv(fichier_tension, header=None)
-                    if df_tmp.shape[0] == 1:
-                        raw = json.loads(df_tmp.iloc[0, 0])
-                    elif df_tmp.shape[1] == 1:
-                        raw = df_tmp.iloc[:, 0].dropna().tolist()
-                    else:
-                        raise ValueError("Unrecognized format in voltage file")
+            raw = read_supervisor_series(fichier_tension)
 
             df_t = pd.DataFrame({"Voltage (V)": raw})
             out = os.path.join(excel_folder, f"{folder}_tension.xlsx")
@@ -49,18 +76,7 @@ def traiter_dossier(path, folder, excel_folder=None):
 
     if fichier_courant:
         try:
-            with open(fichier_courant) as f:
-                raw_str = f.read().strip()
-                if raw_str.startswith("["):
-                    raw = json.loads(raw_str)
-                else:
-                    df_tmp = pd.read_csv(fichier_courant, header=None)
-                    if df_tmp.shape[0] == 1:
-                        raw = json.loads(df_tmp.iloc[0, 0])
-                    elif df_tmp.shape[1] == 1:
-                        raw = df_tmp.iloc[:, 0].dropna().tolist()
-                    else:
-                        raise ValueError("Unrecognized format in current file")
+            raw = read_supervisor_series(fichier_courant)
 
             df_c = pd.DataFrame({"Current (A)": raw})
             out = os.path.join(excel_folder, f"{folder}_courant.xlsx")
@@ -117,21 +133,13 @@ def process_voltage(vlevel, freq, all_data, base=None, excel_folder=None, outdir
     rdata = json.load(open(result_file))
     I_peak_list = [rdata.get(f"Data{i+1}", {}).get("2", {}).get("value", float("nan")) for i in range(nbI)]
 
-    pts = min(len(cour), len(tens))
-    valid = (pts // nbI) * nbI
-    if valid == 0:
+    means = segment_means(cour, tens, nbI)
+    if not means:
         print("  [ERROR] Not enough data")
         return
 
-    cour, tens = cour[:valid], tens[:valid]
-    seg = valid // nbI
-
     rows = []
-    for i in range(nbI):
-        I_vals = cour.iloc[i*seg:(i+1)*seg].values
-        V_vals = tens.iloc[i*seg:(i+1)*seg].values
-        I_moy = (I_vals * V_vals).sum() / V_vals.sum() if V_vals.sum() != 0 else float('nan')
-        V_moy = V_vals.mean()
+    for i, (I_moy, V_moy) in enumerate(means):
         P = I_moy * V_moy
         I_lim = (phases[i] / 180 * vlevel) / ((L * 1e-3) * 4 * freq)
         E_off = 0.25 * (P - I_lim**2 * TotalR) / freq
