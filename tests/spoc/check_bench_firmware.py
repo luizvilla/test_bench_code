@@ -103,6 +103,8 @@ class Bench:
         sc = self.scope
         sc.set_timebase(window_s / 10, expected_s)
         sc.set_edge_trigger(trig_ch, THRESHOLD_V, "POSitive" if trig_slope > 0 else "NEGative", sweep="NORMal")
+        self.fresh(window_s / 10)             # discarded: the first record after a timebase
+                                              # change can still use the old offset (MHO984)
         for _ in range(3):                    # an empty record now and then: retry
             self.fresh(window_s / 10)
             t, v = sc.waveform(ch)
@@ -183,6 +185,37 @@ def check_dead_time(b: Bench, results: list, freqs):
             results.append(dict(check="dead time", f_hz=f, edge=name, expected_ns=300.0,
                                 measured_ns=None if got is None else got * 1e9,
                                 ok=got is not None and abs(got - 300e-9) <= TOL_DEAD_S))
+
+
+def check_dead_time_comp(b: Bench, results: list, freqs, duty=0.5, dead_ns=300):
+    """#8: with Config/wDeadTimeComp on, each leg's duty is D - td*f/2: the high pulse of
+    LEG1 (PA8) and of LEG2 (PB12) is shorter by td/2 and LEG2's low-side pulse (PB13)
+    longer by td/2; off, the widths are D*T - td as before."""
+    td = dead_ns * 1e-9
+    for f in freqs:
+        T = 1.0 / f
+        for comp in (False, True):
+            b.configure(f, duty=duty, dead_ns=dead_ns)
+            b.cmd("DEADTIME_COMP", "ON" if comp else "OFF")
+            time.sleep(0.05)
+            d_eff = duty - (td * f / 2 if comp else 0.0)
+            for pin, ch_route, high_exp in (("PA8", "ch1", d_eff * T - td),
+                                            ("PB12", "ch1", d_eff * T - td),
+                                            ("PB13", "ch3", (1 - d_eff) * T - td)):
+                n = int(ch_route[-1])
+                got = None
+                for _ in range(3):   # an empty capture right after configure + re-route: re-route, retry
+                    b.route({ch_route: pin})
+                    time.sleep(0.2)
+                    b.edge_near(n, +1, n, -1, high_exp, 2e-6)       # warm-up, discarded: the first
+                    got = b.edge_near(n, +1, n, -1, high_exp, 2e-6)  # capture after configure misses
+                    if got is not None:
+                        break
+                results.append(dict(check="dead-time duty compensation", f_hz=f, comp="ON" if comp else "OFF",
+                                    pin=pin, expected_high_ns=high_exp * 1e9,
+                                    measured_high_ns=None if got is None else got * 1e9,
+                                    ok=got is not None and abs(got - high_exp) <= TOL_DEAD_S))
+        b.cmd("DEADTIME_COMP", "OFF")
 
 
 def check_trigger_pulse(b: Bench, results: list):
@@ -321,6 +354,7 @@ def main():
     check_trigger_pulse(b, results)
     check_frequency_and_phase(b, results, pts)
     check_dead_time(b, results, [10000, 50000, 100000])
+    check_dead_time_comp(b, results, [10000, 50000, 100000])
     for f in (10000, 50000):
         phases = next(p[2] for p in pts if p[1] == f)
         check_phase_steps(b, results, f, [x for x in phases if x > 0])

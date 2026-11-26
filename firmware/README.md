@@ -4,9 +4,9 @@ The SPIN firmware of the opposition test bench, spoken to by the supervisor over
 
 | | |
 |---|---|
-| Core | [luizvilla/Core](https://github.com/luizvilla/Core) branch `power_tuesday-v2`, commit **`d7b25ee4`**: upstream main `8111a0dc` + DMA duty sequences and period-synchronised start/stop + the up-down re-init fix + the ThingSet bench app (from `serial_thingset_example_modular`) + bench patches. Old Zephyr (not the 4.4.2 bump). |
+| Core | [luizvilla/Core](https://github.com/luizvilla/Core) branch `power_tuesday-v2`, commit **`554f8b9a`**: upstream main `8111a0dc` + DMA duty sequences and period-synchronised start/stop + the up-down re-init fix + the ThingSet bench app (from `serial_thingset_example_modular`) + bench patches (GPIO 9 trigger, limits, fractional phase, 10 kHz minimum, dead-time compensation). Old Zephyr (not the 4.4.2 bump). |
 | App | `src/` here is a copy of that commit's `src/` (the build uses the core branch's own `src/`). |
-| Binary | `bench-thingset-d7b25ee4.mcuboot.bin` (env USB, signed for MCUboot), sha256 `5a97aae3…a1f` |
+| Binary | `bench-thingset-554f8b9a.mcuboot.bin` (env USB, signed for MCUboot), sha256 `be585d93…6de` |
 | Shield | Twist 1.4.2 (`board_shield = twist`, `board_shield_version = 1_4_2`) |
 
 ## What the bench needs from it
@@ -16,13 +16,13 @@ The SPIN firmware of the opposition test bench, spoken to by the supervisor over
 - **Scope trigger:** Spin pin 9 (PC7) goes high for 21 control periods (2.1 ms) after each LEG2 phase or duty write.
 - **Limits:** phase 0–360°, dead times 100–2000 ns; out-of-range writes are refused (the old value is restored, the shim raises).
 - **Frequency:** 10 kHz minimum (`src/app.overlay` overrides the Twist's 50 kHz; timer tick ~2.9 ns), default 50 kHz.
-- **Dead-time duty compensation:** `Config/wDeadTimeComp` flag (see map ticket #8 for the compensation itself).
+- **Dead-time duty compensation:** `Config/wDeadTimeComp` (off by default): each leg's open-loop duty becomes D − td·f/2 (td = mean of the leg's rising and falling dead times, f the live frequency), recomputed every control period; 0.485 at 100 kHz / 300 ns.
 
 ## Build and flash
 
 ```sh
 git clone git@github.com:luizvilla/Core.git Core-power-tuesday
-cd Core-power-tuesday && git checkout d7b25ee4
+cd Core-power-tuesday && git checkout 554f8b9a
 ~/.platformio/penv/bin/pio run -e USB -t upload      # over USB (MCUboot / mcumgr)
 ```
 
@@ -33,7 +33,7 @@ cd Core-power-tuesday && git checkout d7b25ee4
 ```sh
 PKG=~/.platformio/packages
 $PKG/tool-openocd/bin/openocd -s $PKG/tool-openocd/openocd/scripts -f interface/stlink.cfg -f target/stm32g4x.cfg \
-  -c "program firmware/bench-thingset-d7b25ee4.mcuboot.bin 0x8047800 verify reset exit"
+  -c "program firmware/bench-thingset-554f8b9a.mcuboot.bin 0x8047800 verify reset exit"
 ```
 
 The board then enumerates as `OwnTech Technologies TWIST_V1_4_2` (USB 2fe3:0100), two ports: `…-if00` (console, never open it at 1200 baud: it reboots into the bootloader) and `…-if02` (ThingSet).

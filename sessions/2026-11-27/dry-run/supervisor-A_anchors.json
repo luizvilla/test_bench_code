@@ -1,0 +1,77 @@
+{
+ "meta": {
+  "date": "2026-11-26T17:30:11",
+  "group": "A_anchors",
+  "base_config": "sessions/2026-11-27/base-config_A_anchors.json",
+  "cut": "5843500300470041",
+  "total_s": 59.7
+ },
+ "rows": [
+  {
+   "config": "sessions/2026-11-27/configs/A_anchors/PhaseShift/Voltage_60_50kHz/PhaseShift_Voltage_60V_Freq50kHz.json",
+   "f_hz": 50000,
+   "commands": 23,
+   "errors": [],
+   "crash": null,
+   "phases_sent": [
+    3,
+    0.0,
+    12.0,
+    24.0,
+    36.0,
+    48.0,
+    60.0,
+    72.0,
+    84.0,
+    3
+   ],
+   "plateau_s": 0.581,
+   "run_s": 20.0,
+   "ok": true
+  },
+  {
+   "config": "sessions/2026-11-27/configs/A_anchors/PhaseShift/Voltage_60_60kHz/PhaseShift_Voltage_60V_Freq60kHz.json",
+   "f_hz": 60000,
+   "commands": 23,
+   "errors": [],
+   "crash": null,
+   "phases_sent": [
+    3,
+    0.0,
+    14.4,
+    28.8,
+    43.2,
+    57.6,
+    72.0,
+    86.4,
+    100.8,
+    3
+   ],
+   "plateau_s": 0.584,
+   "run_s": 19.8,
+   "ok": true
+  },
+  {
+   "config": "sessions/2026-11-27/configs/A_anchors/PhaseShift/Voltage_60_70kHz/PhaseShift_Voltage_60V_Freq70kHz.json",
+   "f_hz": 70000,
+   "commands": 23,
+   "errors": [],
+   "crash": null,
+   "phases_sent": [
+    3,
+    0.0,
+    16.8,
+    33.6,
+    50.4,
+    67.2,
+    84.0,
+    100.8,
+    117.6,
+    3
+   ],
+   "plateau_s": 0.588,
+   "run_s": 19.9,
+   "ok": true
+  }
+ ]
+}
