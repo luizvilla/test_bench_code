@@ -16,7 +16,7 @@ L = 40 µH (`InductorL`), 26 frequencies from 10 to 100 kHz. The 50/60/70 kHz an
 Both base configs are copies of the repository `base-config.json` with only these keys changed:
 `Vmin = Vmax = 60`, `nbPointsV = 1`, `Imin = 0.5`, `Imax = 3.5`, `nbPointsI = 7`, `DeadTimePWM = 300`,
 `frequencyPWM`, `ParentFolder = "sessions/2026-11-27/configs"`, `Experiment_name`.
-Instrument addresses, delays, `CurrentLimit`, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged.
+Instrument addresses, delays, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged. `CurrentLimit` is 0.5 A (was 0.3 A): margin for power-on, phase steps and the capacitor-resonance points, so the supply never enters CC mode and sags Vbus silently; still caps the input at 30 W. Results are written next to the configs and git-ignored (`.gitignore` here). The scope also measures `RMS` on channel 2 (inductor current) for the processing script.
 
 ## Frequencies
 

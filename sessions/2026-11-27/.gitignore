@@ -1,0 +1,6 @@
+# Results are written next to the configs on the bench and are large: keep them out of git
+# for now (decision 2026-11-26). Only the generated configs are tracked.
+configs/**
+!configs/**/
+!configs/**/PhaseShift_Voltage_*.json
+!configs/**/DutyShift_Voltage_*.json
