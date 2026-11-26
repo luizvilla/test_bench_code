@@ -61,6 +61,7 @@ id = "After"
 title = "After the session"
 slice = "After the session"
 nodes = [
+    { id = "N15", tickets = [15], label = "16 Sept raw data<br/>through the script" },
     { id = "N13", tickets = [13], label = "Record the<br/>27 Nov results" },
     { id = "N14", tickets = [14], label = "P_remaining(f)<br/>linear 10–100 kHz?" },
     { id = "FG", fog = "fixed-term grid<br/>Vbus × dead time × Ipeak" },

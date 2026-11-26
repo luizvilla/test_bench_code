@@ -33,12 +33,13 @@ flowchart LR
     N7["🔨 #7 Fractional phase<br/>(float °)"]:::blocked
     N8["🔨 #8 Dead-time duty<br/>compensation"]:::blocked
     N9["✓ #9 Sweep configs<br/>10–100 kHz + anchors"]:::done
-    N11["🔨 #11 Processing script<br/>= Excel"]:::wip
+    N11["✓ #11 Processing script<br/>= Excel"]:::done
     N10["🔨 #10 SPOC dry run<br/>of the sweep"]:::blocked
     N12["👤 #12 Session plan<br/>27 Nov"]:::blocked
   end
 
   subgraph After["After the session"]
+    N15["👤 #15 16 Sept raw data<br/>through the script"]:::open
     N13["👤 #13 Record the<br/>27 Nov results"]:::blocked
     N14["👤 #14 P_remaining(f)<br/>linear 10–100 kHz?"]:::blocked
     FG["fixed-term grid<br/>Vbus × dead time × Ipeak"]:::fog
@@ -69,6 +70,7 @@ flowchart LR
   N11 --> N12
   N10 --> N12
   N12 --> N13
+  N15 --> N14
   N13 --> N14
   D3 --> N2
   D2 --> N9
