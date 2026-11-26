@@ -1,0 +1,272 @@
+{
+ "now": "2026-11-26T14:49:10Z",
+ "mapBody": "## Destination\n\nA validated loss model of the opposition bench: P_remaining(f) confirmed (or refuted) as linear over a 10–100 kHz campaign at 60 V / 3.5 A peak / 300 ns dead time, Eoff extracted, and the frequency-independent term characterised, published as a new version of the [Zenodo dataset](https://doi.org/10.5281/zenodo.17296030) (data + processing script + short note).\n\n## Resume here\n\n<!-- devmap:resume:start -->\n_Map just charted._ Tonight's slice \"Ready for 27 November\" is the frontier.\n<!-- devmap:resume:end -->\n\n## Visual map\n\n<!-- devmap:diagram:start -->\n_(drawn by `tools/devmap/devmap.py`)_\n<!-- devmap:diagram:end -->\n\n## Notes\n\n- **Domain:** switching-loss measurement by the opposition method (two half-bridges in opposition, SPIN phase shift, DMMs + scopes + Z+ supply, Python supervisor). Origin: the Open-Power session report of 2026-10-13: the next session (2026-11-27) consolidates 10–100 kHz data and confronts it with the loss-breakdown Excel. Analysis so far: P_remaining(f) = 17.43 mW/kHz · f + 3.22 W, Eoff ≈ 4.36 µJ per switch (60 V, 3.5 A peak, 300 ns, 50/60/70 kHz).\n- **Code:** work on branch `session-2026-11-27` of this fork, cut from `ReleaseCandidate_OnlyScripts` (Maxime's simplified supervisor). The bench core is branch `power_tuesday-v2` of [luizvilla/Core](https://github.com/luizvilla/Core), from `feature/hrtim-dma-sequences` (upstream main `8111a0dc` + period-synchronised start/stop) with the up-down re-init fix `04f43dc8`; old Zephyr, **not** the 4.4.2 bump. Local worktree `~/code/Core-power-tuesday`. The bench app lives in `firmware/` of this repo, pinned to that core.\n- **This map carries execution (override of wayfinder's planning default).** `wayfinder:build` tickets are build units: Unit / Done when / Test. Commits say `Refs #n`; the last one says `Closes #n`. A build ticket closes when its \"done when\" holds.\n- **`wayfinder:luiz`** (👤) marks a ticket that can't move without Luiz: a decision, a powered bench session, a colleague's OK.\n- **Claiming:** assign to luizvilla **and** comment \"claimed by <Claude|Codex|Luiz>, <date>\". Post \"stopped at / next step\" at every commit. 3 days without a comment, commit or update = stale (⏳).\n- **SPOC:** the Spin-alone tests run autonomously on the SPOC bench (reflash through ST-Link, scope verdicts); run the Core2 preflight first and leave the board with the bench firmware.\n- **Visual map:** run `python3 tools/devmap/devmap.py` after any ticket opens, closes, is claimed or is blocked; it redraws this body and `docs/map.md`. No GitHub Project for now.\n- **Upstream:** issues and PRs on `owntech-foundation/test_bench_code` only with Luiz's go. Always pass `-R luizvilla/test_bench_code` to `gh`.\n- **Skills:** `grilling` + `domain-modeling` for HITL tickets, `research` for research, `tdd` for build tickets where a test fits.\n\n## Decisions so far\n\n<!-- one line per closed ticket -->\n\n## Not yet specified\n\n- **Fixed-term characterisation grid:** how the ~3.22 W frequency-independent part varies with bus voltage, dead time and peak current: which grid, how many sessions. Hangs on whether the frequency trend holds.\n- **Capacitor vs frequency window:** the electrolytic (125 mΩ ESR) resonates too close to the switching frequencies; change the capacitor, or restrict the window. Hangs on where the sweep shows the resonance biting.\n- **Simulation vs bench mismatch** (upstream owntech-foundation/test_bench_code#10) and the bench-vs-simulation protocol (#13): what the LTspice models must explain once the processing script exists.\n- **DMM trigger timing at fast plateaus** (upstream #12): matters if the campaign needs shorter plateaus.\n- **Zenodo new version:** contents, the note, the processing script's release.\n- **Upstreaming:** PRs of `session-2026-11-27` to `owntech-foundation/test_bench_code` and of `power_tuesday-v2` to OwnTech Core, once the session confirms them.\n- **ThingSet migration itself**, once the decision says go.\n\n## Out of scope\n\n- A journal / conference paper: the destination stops at the Zenodo version.\n- The Zephyr 4.4.2 bump (code/Core) and the Safety API PR (code/Core2): separate maps.\n",
+ "tickets": [
+  {
+   "number": 2,
+   "title": "Bench core: power_tuesday-v2 branch on luizvilla/Core",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:08Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 3,
+   "title": "Bench app builds on power_tuesday-v2, kept in firmware/ of this repo",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:13Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 2,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 4,
+   "title": "Phase shift reductions and stop without glitches",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:17Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 3,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 5,
+   "title": "Can the bench firmware and supervisor move to ThingSet?",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:48:19Z",
+   "labels": [
+    "wayfinder:research"
+   ],
+   "assignees": [
+    "luizvilla"
+   ],
+   "blockedBy": [],
+   "lastComment": {
+    "body": "claimed by Claude (research subagent), 2026-11-26",
+    "createdAt": "2026-11-26T14:48:18Z"
+   },
+   "lastCommit": null
+  },
+  {
+   "number": 6,
+   "title": "ThingSet: migrate the bench protocol now, after the session, or not?",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:27Z",
+   "labels": [
+    "wayfinder:grilling",
+    "wayfinder:luiz"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 5,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 7,
+   "title": "Fractional phase shift in float degrees",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:31Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 6,
+     "state": "OPEN"
+    },
+    {
+     "number": 3,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 8,
+   "title": "Dead-time duty compensation behind a command",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:35Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 6,
+     "state": "OPEN"
+    },
+    {
+     "number": 3,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 9,
+   "title": "Sweep configs: 10–100 kHz grid with 50/60/70 kHz anchors first",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:48:29Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [
+    "luizvilla"
+   ],
+   "blockedBy": [],
+   "lastComment": {
+    "body": "claimed by Claude (subagent), 2026-11-26",
+    "createdAt": "2026-11-26T14:48:29Z"
+   },
+   "lastCommit": null
+  },
+  {
+   "number": 10,
+   "title": "SPOC dry run of the 10–100 kHz sweep",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:43Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 9,
+     "state": "OPEN"
+    },
+    {
+     "number": 8,
+     "state": "OPEN"
+    },
+    {
+     "number": 7,
+     "state": "OPEN"
+    },
+    {
+     "number": 4,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 11,
+   "title": "Processing script that reproduces the loss-breakdown Excel",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:48:30Z",
+   "labels": [
+    "wayfinder:build"
+   ],
+   "assignees": [
+    "luizvilla"
+   ],
+   "blockedBy": [],
+   "lastComment": {
+    "body": "claimed by Claude (subagent), 2026-11-26",
+    "createdAt": "2026-11-26T14:48:30Z"
+   },
+   "lastCommit": null
+  },
+  {
+   "number": 12,
+   "title": "Session plan for 27 November",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:52Z",
+   "labels": [
+    "wayfinder:task",
+    "wayfinder:luiz"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 11,
+     "state": "OPEN"
+    },
+    {
+     "number": 10,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 13,
+   "title": "Record the 27 November session results",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:46:57Z",
+   "labels": [
+    "wayfinder:task",
+    "wayfinder:luiz"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 12,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  },
+  {
+   "number": 14,
+   "title": "Does P_remaining(f) stay linear over 10–100 kHz?",
+   "state": "OPEN",
+   "updatedAt": "2026-11-26T14:47:01Z",
+   "labels": [
+    "wayfinder:grilling",
+    "wayfinder:luiz"
+   ],
+   "assignees": [],
+   "blockedBy": [
+    {
+     "number": 11,
+     "state": "OPEN"
+    },
+    {
+     "number": 13,
+     "state": "OPEN"
+    }
+   ],
+   "lastComment": null,
+   "lastCommit": null
+  }
+ ],
+ "project": {
+  "id": null,
+  "fields": {},
+  "items": {}
+ }
+}

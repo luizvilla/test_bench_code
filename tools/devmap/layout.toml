@@ -1,0 +1,81 @@
+# The map's drawing: what the tracker cannot say. devmap.py takes colours from each
+# ticket's state and solid arrows from GitHub's blocking links; this file fixes the groups,
+# the node order, the short labels, the fog, out of scope and the arrows the tracker does not hold.
+# A map ticket missing here still shows, in "New tickets": give it a place.
+#
+# Node kinds: tickets = [n, ...] (label without "#n" or icons; several tickets make one node),
+# done = "text" (work done before the map), fog = "text" (not yet specified),
+# out = "text" (ruled out of scope), or tickets + out = true (closed as out of scope).
+
+destination = "🎯 Validated Eoff and fixed-loss model,<br/>10–100 kHz, new Zenodo version"
+map_issue = 1
+repo = "luizvilla/test_bench_code"
+# project_owner = "luizvilla"   # no GitHub Project yet: set both to enable it
+# project_number = 0
+stale_days = 3
+
+edges = [
+    "D3 --> N2",
+    "D2 --> N9",
+    "D1 --> N11",
+    "N6 -.-> FT",
+    "N11 -.-> FS",
+    "N14 -.-> FG",
+    "N14 -.-> FC",
+    "N10 -.-> FU",
+    "FG -.-> FZ",
+    "FS -.-> FZ",
+    "N14 --> FZ",
+    "FZ -.-> DEST",
+]
+
+[[group]]
+id = "Before"
+title = "Done before the map"
+nodes = [
+    { id = "D1", done = "16 Sept session, 50/60/70 kHz<br/>loss-breakdown Excel" },
+    { id = "D2", done = "OnlyScripts supervisor<br/>(Maxime)" },
+    { id = "D3", done = "Period-synced start/stop<br/>DMA sequences (Core)" },
+]
+
+[[group]]
+id = "Tonight"
+title = "Ready for 27 November"
+slice = "Ready for 27 November"
+nodes = [
+    { id = "N2", tickets = [2], label = "Bench core<br/>power_tuesday-v2" },
+    { id = "N3", tickets = [3], label = "Bench app on new core<br/>firmware/" },
+    { id = "N5", tickets = [5], label = "ThingSet migration?" },
+    { id = "N6", tickets = [6], label = "ThingSet: now,<br/>later or not?" },
+    { id = "N4", tickets = [4], label = "Phase reduction<br/>and stop fix" },
+    { id = "N7", tickets = [7], label = "Fractional phase<br/>(float °)" },
+    { id = "N8", tickets = [8], label = "Dead-time duty<br/>compensation" },
+    { id = "N9", tickets = [9], label = "Sweep configs<br/>10–100 kHz + anchors" },
+    { id = "N11", tickets = [11], label = "Processing script<br/>= Excel" },
+    { id = "N10", tickets = [10], label = "SPOC dry run<br/>of the sweep" },
+    { id = "N12", tickets = [12], label = "Session plan<br/>27 Nov" },
+]
+
+[[group]]
+id = "After"
+title = "After the session"
+slice = "After the session"
+nodes = [
+    { id = "N13", tickets = [13], label = "Record the<br/>27 Nov results" },
+    { id = "N14", tickets = [14], label = "P_remaining(f)<br/>linear 10–100 kHz?" },
+    { id = "FG", fog = "fixed-term grid<br/>Vbus × dead time × Ipeak" },
+    { id = "FC", fog = "capacitor vs<br/>frequency window" },
+    { id = "FS", fog = "sim vs bench<br/>(upstream #10, #13)" },
+    { id = "FT", fog = "ThingSet migration" },
+    { id = "FU", fog = "upstream PRs<br/>bench + core" },
+    { id = "FZ", fog = "Zenodo new version<br/>data + script + note" },
+]
+
+[[group]]
+id = "Out"
+title = "Out of scope"
+nodes = [
+    { id = "O1", out = "paper" },
+    { id = "O2", out = "Zephyr 4.4.2 bump<br/>(code/Core)" },
+    { id = "O3", out = "Safety API PR<br/>(code/Core2)" },
+]

@@ -32,4 +32,4 @@ pip-delete-this-directory.txt
 # Ignorer les fichiers de build (ex: setuptools)
 build/
 dist/
-*.egg-info/
+*.egg-info/__pycache__/
