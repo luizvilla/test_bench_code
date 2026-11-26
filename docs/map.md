@@ -26,9 +26,10 @@ flowchart LR
 
   subgraph Tonight["Ready for 27 November"]
     N2["✓ #2 Bench core<br/>power_tuesday-v2"]:::done
-    N3["🔨 #3 Bench app on new core<br/>firmware/"]:::wip
+    N3["🔨 #3 Bench app on ThingSet<br/>firmware/"]:::wip
     N5["✓ #5 ThingSet migration?"]:::done
-    N6["👤 #6 ThingSet: now,<br/>later or not?"]:::open
+    N6["✓ #6 ThingSet: now,<br/>later or not?"]:::done
+    N16["🔨 #16 Supervisor ThingSet<br/>shim + port"]:::open
     N4["🔨 #4 Phase reduction<br/>and stop fix"]:::blocked
     N7["🔨 #7 Fractional phase<br/>(float °)"]:::blocked
     N8["🔨 #8 Dead-time duty<br/>compensation"]:::blocked
@@ -45,7 +46,6 @@ flowchart LR
     FG["fixed-term grid<br/>Vbus × dead time × Ipeak"]:::fog
     FC["capacitor vs<br/>frequency window"]:::fog
     FS["sim vs bench<br/>(upstream #10, #13)"]:::fog
-    FT["ThingSet migration"]:::fog
     FU["upstream PRs<br/>bench + core"]:::fog
     FZ["Zenodo new version<br/>data + script + note"]:::fog
   end
@@ -61,8 +61,9 @@ flowchart LR
   N3 --> N7
   N3 --> N8
   N5 --> N6
-  N6 --> N7
-  N6 --> N8
+  N6 --> N3
+  N6 --> N16
+  N16 --> N10
   N4 --> N10
   N7 --> N10
   N8 --> N10
@@ -75,7 +76,6 @@ flowchart LR
   D3 --> N2
   D2 --> N9
   D1 --> N11
-  N6 -.-> FT
   N11 -.-> FS
   N14 -.-> FG
   N14 -.-> FC

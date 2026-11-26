@@ -18,7 +18,6 @@ edges = [
     "D3 --> N2",
     "D2 --> N9",
     "D1 --> N11",
-    "N6 -.-> FT",
     "N11 -.-> FS",
     "N14 -.-> FG",
     "N14 -.-> FC",
@@ -44,9 +43,10 @@ title = "Ready for 27 November"
 slice = "Ready for 27 November"
 nodes = [
     { id = "N2", tickets = [2], label = "Bench core<br/>power_tuesday-v2" },
-    { id = "N3", tickets = [3], label = "Bench app on new core<br/>firmware/" },
+    { id = "N3", tickets = [3], label = "Bench app on ThingSet<br/>firmware/" },
     { id = "N5", tickets = [5], label = "ThingSet migration?" },
     { id = "N6", tickets = [6], label = "ThingSet: now,<br/>later or not?" },
+    { id = "N16", tickets = [16], label = "Supervisor ThingSet<br/>shim + port" },
     { id = "N4", tickets = [4], label = "Phase reduction<br/>and stop fix" },
     { id = "N7", tickets = [7], label = "Fractional phase<br/>(float °)" },
     { id = "N8", tickets = [8], label = "Dead-time duty<br/>compensation" },
@@ -67,7 +67,6 @@ nodes = [
     { id = "FG", fog = "fixed-term grid<br/>Vbus × dead time × Ipeak" },
     { id = "FC", fog = "capacitor vs<br/>frequency window" },
     { id = "FS", fog = "sim vs bench<br/>(upstream #10, #13)" },
-    { id = "FT", fog = "ThingSet migration" },
     { id = "FU", fog = "upstream PRs<br/>bench + core" },
     { id = "FZ", fog = "Zenodo new version<br/>data + script + note" },
 ]
