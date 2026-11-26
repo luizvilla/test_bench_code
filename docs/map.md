@@ -37,6 +37,8 @@ flowchart LR
     N11["✓ #11 Processing script<br/>= Excel"]:::done
     N10["✓ #10 SPOC dry run<br/>of the sweep"]:::done
     N12["👤 #12 Session plan<br/>27 Nov"]:::wip
+    N17["🔨 #17 Processing script<br/>on float configs"]:::wip
+    N18["🔨 #18 Command center<br/>HTML + plots"]:::wip
   end
 
   subgraph After["After the session"]
@@ -56,11 +58,6 @@ flowchart LR
     O3["Safety API PR<br/>(code/Core2)"]:::out
   end
 
-  subgraph New["New tickets: place them in tools/devmap/layout.toml"]
-    N17["🔨 #17 Processing script runs on<br/>the 27 Nov configs (float<br/>phases, lead-in)"]:::wip
-    N18["🔨 #18 Command center: one HTML<br/>with every 27 Nov result<br/>and interactive plots"]:::wip
-  end
-
   N2 --> N3
   N3 --> N4
   N3 --> N7
@@ -76,6 +73,7 @@ flowchart LR
   N11 --> N12
   N10 --> N12
   N12 --> N13
+  N17 --> N13
   N15 --> N14
   N13 --> N14
   D3 --> N2

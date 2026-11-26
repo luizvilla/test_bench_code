@@ -54,6 +54,8 @@ nodes = [
     { id = "N11", tickets = [11], label = "Processing script<br/>= Excel" },
     { id = "N10", tickets = [10], label = "SPOC dry run<br/>of the sweep" },
     { id = "N12", tickets = [12], label = "Session plan<br/>27 Nov" },
+    { id = "N17", tickets = [17], label = "Processing script<br/>on float configs" },
+    { id = "N18", tickets = [18], label = "Command center<br/>HTML + plots" },
 ]
 
 [[group]]
