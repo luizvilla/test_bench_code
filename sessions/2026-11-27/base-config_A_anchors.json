@@ -64,7 +64,9 @@
         }
     ],
     "shield_vid": 12259,
-    "shield_pid": 257,
+    "shield_pid": 256,
+    "shield_protocol": "thingset",
+    "DeadTimeComp": 0,
     "TotalR": 0.42,
     "InductorL": 40,
     "Sequence": 3,

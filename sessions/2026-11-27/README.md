@@ -67,7 +67,9 @@ Highest phase: 168° at 100 kHz, below `Limited_PHI = 175`.
 ## Phase resolution: float degrees vs firmware
 
 The generator now writes float phases rounded to 2 decimals, and the supervisor sweep handles floats.
-The SPIN sends `s_LEG2_p_<value>`, for example `s_LEG2_p_2.4`.
+With the string protocol the supervisor sends `s_LEG2_p_<value>`, for example `s_LEG2_p_2.4`. The session configs now use
+ThingSet (`"shield_protocol": "thingset"`, ticket #16): the phase is written as a float to `Config/Leg2/wPhaseShift_deg`,
+so no truncation once the firmware implements that object.
 **Until ticket #7 lands, the firmware truncates the phase to an integer degree.** The column "int-trunc worst ΔI/I" gives
 the worst current error over the 7 points caused by that truncation (Phi ∝ I, so the phase error equals the current error).
 Points **below 30 kHz** are flagged: all their phases are small (2.4–45°), and truncation costs up to 31 %

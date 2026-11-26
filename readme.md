@@ -47,6 +47,39 @@ Both scripts take an optional base-config path: `python3 Opposition_GenerateJson
 Run the unit tests (no hardware needed) with `python3 -m unittest discover -s tests`.
 
 
+Talking ThingSet to the SPIN (since Nov. 2026)
+------------
+
+The supervisor speaks either the old string protocol (`comm_protocol/`) or ThingSet, chosen by the base config:
+
+```json
+"shield_protocol": "thingset",
+"shield_vid": 12259,
+"shield_pid": 256,
+"DeadTimeComp": 0
+```
+
+* `shield_protocol`: `"string"` (default when the key is missing, old firmware, PID 257 = 0x0101) or `"thingset"`
+  (ThingSet bench firmware, OwnTech Core `serial_thingset_example_modular` lineage, PID 256 = 0x0100, product `SPIN`).
+  The session configs under `sessions/2026-11-27/` use `"thingset"`.
+* `DeadTimeComp`: `0`/`1`, dead-time duty compensation off/on, written to `Config/wDeadTimeComp` during setup
+  (ThingSet only; leave it out for the string firmware).
+* Optional: `shield_port` (an explicit port, e.g. `/dev/serial/by-id/usb-OwnTech_Technologies_SPIN_<serial>-if02`),
+  `shield_serial` (picks one board when several SPINs are plugged in), `shield_verify` (default `true`: read back every write).
+
+`lib/thingset_shield.py` (`ThingSetShield`) keeps the `sendCommand(action, *args, delay=...)` interface, so
+`supervisor_script.py` is unchanged. Each action becomes one ThingSet write, read back to catch values the firmware
+silently restores; errors raise. `PHASE_SHIFT` writes the float `Config/LegN/wPhaseShift_deg`. The shim rejects phases
+outside 0–360° and dead times outside 100–2000 ns before sending. `lib/thingset_tools.py` is the transport, vendored
+from OwnTech Core.
+
+The SPIN shows two serial ports with the same VID/PID: `if00` (console, scope data) and `if02` (ThingSet shell).
+The supervisor picks `if02` through `/dev/serial/by-id/*-if02`, then by USB interface number, then by a handshake
+probe at 115200 baud. **Never open `if00` at 1200 baud**: that reboots the board into its bootloader. With two SPINs
+attached, set `shield_serial`. Manual check: `python3 lib/thingset_tools.py --port /dev/serial/by-id/...-if02` dumps
+the object tree.
+
+
 Requirements
 ------------
 
