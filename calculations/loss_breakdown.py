@@ -232,6 +232,7 @@ def load_session_folder(
     root = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, os.path.dirname(root))
     from TraitementV10 import read_supervisor_series, segment_means
+    from lib.phase_sweep import phase_sweep_values
 
     phase_dir = os.path.join(folder, "PhaseShift")
     if not os.path.isdir(phase_dir):
@@ -257,9 +258,14 @@ def load_session_folder(
         means = segment_means(
             read_supervisor_series(csv_i[0]), read_supervisor_series(csv_v[0]), nb
         )
-        phases = cfg.get("PhaseTab") or list(
-            range(cfg.get("PhaseInit", 0), cfg.get("PhaseFinal", 0) + 1, cfg.get("PhaseStep", 1))
-        )
+        phases = cfg.get("PhaseTab")
+        if not phases:
+            # The phases the supervisor actually sent (float-safe). The first one is the generator's
+            # lead-in, whose measurement the OnlyScripts sweep loses: step i is sweep point i.
+            sweep = phase_sweep_values(
+                cfg.get("PhaseInit", 0), cfg.get("PhaseFinal", 0), cfg.get("PhaseStep", 1)
+            )
+            phases = sweep[1 : 1 + nb] if len(sweep) > nb else sweep
         params = {**DEFAULT_CIRCUIT, **cfg.get("LossModel", {}), **(circuit or {})}
         for i, (i_dc, v_bus) in enumerate(means, start=1):
             ampl = _scope_values(rdata, i, "AMPL")

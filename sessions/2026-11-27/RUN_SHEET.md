@@ -6,7 +6,7 @@ Everything below runs from the root of branch `session-2026-11-27`.
 
 ## 0. Before powering anything (≈ 20 min)
 
-1. **Code:** `git fetch && git checkout session-2026-11-27 && git pull`; `pip install -r requirements.txt` (pyserial is needed for ThingSet).
+1. **Code:** `git fetch && git checkout session-2026-11-27 && git pull`; `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` (pyserial is needed for ThingSet). **Every command below runs in this venv**: the system pandas breaks against a newer numpy in `~/.local` (`numpy.dtype size changed`).
 2. **Flash the bench SPIN** with `firmware/bench-thingset-554f8b9a.mcuboot.bin` (ThingSet, fractional phase, 10 kHz minimum). Either OwnTech's *Firmware flasher* widget on the console port as before, or with the core checked out at `554f8b9a`: `pio run -e USB -t upload`. Details and the ST-Link variant: [`firmware/README.md`](../../firmware/README.md).
 3. **Check the board answers:** it enumerates as `OwnTech Technologies TWIST_V1_4_2` with two ports. `ls -l /dev/serial/by-id/` → the ThingSet one ends in `-if02`. If more than one SPIN is plugged in, put its serial in **both** base configs and the generated configs as `"shield_serial"` (or its path as `"shield_port"`); otherwise the supervisor refuses to guess.
 4. **Smoke test without HV:** `python3 -c "from lib.thingset_shield import ThingSetShield as T; s=T.open(); print(s.sendCommand('FREQUENCY','LEG1',50000), s.sendCommand('PHASE_SHIFT','LEG2',10.5))"` and look at the gate signals on the scope: 50 kHz, LEG2 lagging 0.583 µs, GPIO 9 (pin PC7) pulsing 2.1 ms after the phase write.

@@ -7,7 +7,6 @@ pyvisa-py
 pyserial
 zeroconf
 psutil
-sys
 
 pandas
 openpyxl

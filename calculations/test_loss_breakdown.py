@@ -132,3 +132,42 @@ def test_session_without_scope_rms_falls_back_to_equation(tmp_path):
     for f_khz, expected in excel_cached_values().items():
         assert pts.loc[f_khz, "irms_source"] == "equation"
         assert pts.loc[f_khz, "irms_used_A"] == pytest.approx(expected[46], rel=1e-9)
+
+
+# --------------------------------------------------------------------------- 2026-11-27 session configs
+
+ANCHOR_50 = os.path.join(os.path.dirname(HERE), "sessions", "2026-11-27", "configs", "A_anchors",
+                         "PhaseShift", "Voltage_60_50kHz", "PhaseShift_Voltage_60V_Freq50kHz.json")
+
+
+def write_float_session(tmp_path, frames=7):
+    """A results folder as the supervisor writes it for the real 50 kHz anchor config
+    (float phases, no PhaseTab, lead-in 0 deg + 7 points): 7 DMM plateaus of 3 samples,
+    `frames` scope frames with AMPL = 2 * Ipeak of the matching step."""
+    d = tmp_path / "A_anchors" / "PhaseShift" / "Voltage_60_50kHz"
+    d.mkdir(parents=True)
+    (d / os.path.basename(ANCHOR_50)).write_text(open(ANCHOR_50).read())
+    (d / "csv-10_00_00-27_11_2026-Voltage.csv").write_text(json.dumps([60.0] * 21))
+    (d / "csv-10_00_00-27_11_2026-Current.csv").write_text(json.dumps([0.13] * 21))
+    (d / "results.json").write_text(json.dumps({f"Data{n}": {
+        "1": {"type": "FREQ", "channel": 1, "value": 50000.0},
+        "2": {"type": "AMPL", "channel": 2, "value": n * 1.0},
+        "3": {"type": "RMS", "channel": 2, "value": 0.5}} for n in range(1, frames + 1)}))
+    return tmp_path / "A_anchors"
+
+
+def test_float_session_config_loads_one_point_per_current_step(tmp_path):
+    pts = lb.load(str(write_float_session(tmp_path)))
+    assert len(pts) == 7
+    assert list(pts["ipeak_A"]) == pytest.approx([0.5 * n for n in range(1, 8)])
+
+
+def test_phase_ipeak_skips_the_lead_in_point(tmp_path):
+    """Step i is the i-th point after the 0 deg lead-in: step 7 is 84 deg at 50 kHz = 3.5 A."""
+    pts = lb.load(str(write_float_session(tmp_path)), ipeak_source="phase")
+    assert list(pts["ipeak_A"]) == pytest.approx([0.5 * n for n in range(1, 8)])
+
+
+def test_missing_scope_frames_leave_ipeak_empty(tmp_path):
+    pts = lb.load(str(write_float_session(tmp_path, frames=3)))
+    assert pts["ipeak_A"].iloc[:3].notna().all() and pts["ipeak_A"].iloc[3:].isna().all()
