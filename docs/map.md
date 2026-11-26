@@ -26,17 +26,17 @@ flowchart LR
 
   subgraph Tonight["Ready for 27 November"]
     N2["✓ #2 Bench core<br/>power_tuesday-v2"]:::done
-    N3["🔨 #3 Bench app on ThingSet<br/>firmware/"]:::wip
+    N3["✓ #3 Bench app on ThingSet<br/>firmware/"]:::done
     N5["✓ #5 ThingSet migration?"]:::done
     N6["✓ #6 ThingSet: now,<br/>later or not?"]:::done
-    N16["🔨 #16 Supervisor ThingSet<br/>shim + port"]:::open
-    N4["🔨 #4 Phase reduction<br/>and stop fix"]:::blocked
-    N7["🔨 #7 Fractional phase<br/>(float °)"]:::blocked
-    N8["🔨 #8 Dead-time duty<br/>compensation"]:::blocked
+    N16["✓ #16 Supervisor ThingSet<br/>shim + port"]:::done
+    N4["✓ #4 Phase reduction<br/>and stop fix"]:::done
+    N7["✓ #7 Fractional phase<br/>(float °)"]:::done
+    N8["✓ #8 Dead-time duty<br/>compensation"]:::done
     N9["✓ #9 Sweep configs<br/>10–100 kHz + anchors"]:::done
     N11["✓ #11 Processing script<br/>= Excel"]:::done
-    N10["🔨 #10 SPOC dry run<br/>of the sweep"]:::blocked
-    N12["👤 #12 Session plan<br/>27 Nov"]:::blocked
+    N10["✓ #10 SPOC dry run<br/>of the sweep"]:::done
+    N12["👤 #12 Session plan<br/>27 Nov"]:::wip
   end
 
   subgraph After["After the session"]
