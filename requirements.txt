@@ -11,3 +11,4 @@ psutil
 pandas
 openpyxl
 pytest
+plotly

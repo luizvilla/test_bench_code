@@ -15,6 +15,8 @@ Everything below runs from the root of branch `session-2026-11-27`.
 
 ## 1. Anchors first: 50, 60, 70 kHz (≈ 10 min)
 
+**Command center** (second terminal, venv active, leave it running all session): `python3 tools/command_center.py --watch 10`, then open `sessions/2026-11-27/command-center.html`. One page regenerated as each config's results land: configs done/missing, the go/no-go table below, P_remaining(f) per current step with September, loss breakdown, Ipeak AMPL/2 vs phase, Vbus sag, resonance candidates, scope screenshots. Works without internet.
+
 ```bash
 python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json
 python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/A_anchors

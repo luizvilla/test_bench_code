@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{--bg:#fcfcfb;--panel:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#8a8984;--line:#e4e2dc;
+--good:#008300;--bad:#d03b3a;--warn:#b07800;--none:#c9c7c0;--accent:#2a78d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--panel:#1e1e1c;--ink:#f1f0ec;--ink2:#b5b3ad;
+--muted:#8a8984;--line:#34332f;--good:#3fb950;--bad:#f0605f;--warn:#e0a521;--none:#5a5953;--accent:#6aa7ee}}
+:root[data-theme="dark"]{--bg:#161615;--panel:#1e1e1c;--ink:#f1f0ec;--ink2:#b5b3ad;--muted:#8a8984;--line:#34332f;
+--good:#3fb950;--bad:#f0605f;--warn:#e0a521;--none:#5a5953;--accent:#6aa7ee}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif;margin:0;padding:24px 16px}
+main{max-width:1150px;margin:auto}
+h1{font-size:22px;margin:0} h2{font-size:18px;margin:32px 0 6px}
+.sub{color:var(--ink2);font-size:13px} a{color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:16px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.card b{font-size:15px} .big{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.bar{display:flex;gap:2px;height:10px;border-radius:4px;overflow:hidden;background:var(--line);margin-top:6px}
+.s-done{background:var(--good)} .s-partial{background:var(--warn)} .s-notrun{background:var(--none)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0}
+td,th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+th{color:var(--ink2);font-weight:600} td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.badge{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.b-done{color:var(--good)} .b-partial{color:var(--warn)} .b-notrun{color:var(--muted)} .b-bad{color:var(--bad);border-color:var(--bad)}
+.plot{background:var(--panel);border:1px solid var(--line);border-radius:8px;height:420px;margin:8px 0}
+.note{background:var(--panel);border-left:3px solid var(--accent);padding:6px 12px;font-size:13px;color:var(--ink2);margin:8px 0}
+.note.bad{border-color:var(--bad)} .empty{color:var(--muted);font-style:italic}
+select{font:inherit;padding:2px 6px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+.scroll{overflow-x:auto}
+</style>
+<!--__PLOTLY__-->
+</head>
+<body>
+<main>
+<h1 id="title"></h1>
+<div class="sub" id="meta"></div>
+<div id="errors"></div>
+<div class="cards" id="cards"></div>
+
+<h2>Anchors: go / no-go against September</h2>
+<div class="sub">Highest current step at the September frequencies. September: <span id="septfit"></span>. The verdict is yours: compare the deltas with September's scatter (residuals of a few mW).</div>
+<div class="scroll"><table id="gonogo"></table></div>
+<div id="framesnote"></div>
+
+<h2>P_remaining(f)</h2>
+<div class="sub">One series per current step (all plain groups together); September points and fit in black. Ringed points are resonance candidates (far off their step's line), flagged only. Click a legend entry to show or hide a step.</div>
+<div class="plot" id="p-rem"></div>
+<div class="scroll"><table id="fits"></table></div>
+
+<h2>Loss breakdown at the highest step</h2>
+<div class="plot" id="p-break"></div>
+
+<h2>Ipeak: scope AMPL/2 against the phase</h2>
+<div class="sub">Every point; on the dashed line both readings agree.</div>
+<div class="plot" id="p-ipeak"></div>
+
+<h2>Input: Vbus and DMM traces</h2>
+<div class="sub">Vbus step mean per point: a sag below the set-point means the supply hit its current limit.</div>
+<div class="plot" id="p-vbus"></div>
+<div>Raw DMM buffers of <select id="dmmsel"></select></div>
+<div class="plot" id="p-dmm"></div>
+
+<h2>Resonance candidates</h2>
+<div id="reso"></div>
+
+<h2>Dead-time compensation A/B</h2>
+<div id="dtc"></div>
+
+<h2>Configs</h2>
+<div id="configs"></div>
+</main>
+<script>
+const D = /*__DATA__*/null;
+const WATCH = /*__WATCH__*/0;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f3 = x => x == null ? "–" : Number(x).toFixed(3);
+const f2 = x => x == null ? "–" : Number(x).toFixed(2);
+const sgn = x => x == null ? "–" : (x >= 0 ? "+" : "") + Number(x).toFixed(3);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const STATUS = {"done": ["✓", "done"], "partial": ["!", "partial"], "not run": ["○", "notrun"]};
+const ago = t => { if (!t) return "–"; const s = Date.now()/1000 - t; return s < 90 ? `${Math.round(s)} s ago` : s < 5400 ? `${Math.round(s/60)} min ago` : new Date(t*1000).toLocaleTimeString(); };
+
+function layout(xt, yt, extra) {
+  return Object.assign({
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: {color: css("--ink"), size: 12},
+    margin: {l: 60, r: 20, t: 10, b: 50}, hovermode: "closest", legend: {orientation: "h", y: -0.2},
+    xaxis: {title: {text: xt}, gridcolor: css("--line"), zeroline: false},
+    yaxis: {title: {text: yt}, gridcolor: css("--line"), zeroline: false}, uirevision: "keep"
+  }, extra || {});
+}
+const CFG = {responsive: true, displaylogo: false};
+function plot(id, traces, lay) {
+  if (!window.Plotly) { $(id).innerHTML = '<p class="empty">Plotly did not load.</p>'; return; }
+  if (!traces.length) { $(id).innerHTML = '<p class="empty" style="padding:12px">No data yet.</p>'; $(id).style.height = "auto"; return; }
+  Plotly.newPlot(id, traces, lay, CFG);
+}
+
+// ---------------------------------------------------------------- header and cards
+$("title").textContent = `Command center · session ${D.session}`;
+$("meta").innerHTML = `Generated ${esc(D.generated)}` + (WATCH ? ` · watching, reloads every ${WATCH} s` : " · static: rerun tools/command_center.py to refresh");
+for (const [g, err] of Object.entries(D.errors))
+  $("errors").insertAdjacentHTML("beforeend", `<div class="note bad"><b>${esc(g)}</b>: processing failed: <code>${esc(err)}</code></div>`);
+for (const [g, fs] of Object.entries(D.groups)) {
+  const n = s => fs.filter(f => f.status === s).length;
+  const segs = fs.map(f => `<div class="seg s-${STATUS[f.status][1]}" style="flex:1" title="${f.f_kHz} kHz: ${f.status}"></div>`).join("");
+  const last = Math.max(0, ...fs.map(f => f.updated || 0));
+  $("cards").insertAdjacentHTML("beforeend", `<div class="card"><b>${esc(g)}</b>
+    <div class="big">${n("done")} / ${fs.length}</div>
+    <div class="sub">configs done${n("partial") ? ` · <span style="color:var(--warn)">${n("partial")} partial</span>` : ""} · last result ${ago(last || null)}</div>
+    <div class="bar">${segs}</div></div>`);
+}
+if (D.fits.length) {
+  const top = D.fits.find(f => f.step === D.top_step);
+  if (top) $("cards").insertAdjacentHTML("beforeend", `<div class="card"><b>Fit at step ${top.step}</b>
+    <div class="big">${(top.slope_W_per_kHz*1000).toFixed(2)} mW/kHz</div>
+    <div class="sub">+ ${f3(top.intercept_W)} W · Eoff ${top.eoff_uJ.toFixed(3)} µJ · R² ${top.r2.toFixed(4)} · ${top.n} points<br>September: ${(D.september.slope_W_per_kHz*1000).toFixed(2)} mW/kHz + ${f3(D.september.intercept_W)} W</div></div>`);
+}
+
+// ---------------------------------------------------------------- go / no-go
+const S = D.september;
+$("septfit").textContent = `${(S.slope_W_per_kHz*1000).toFixed(2)} mW/kHz · f + ${S.intercept_W.toFixed(3)} W (R² ${S.r2.toFixed(4)}, Eoff ${S.eoff_uJ.toFixed(3)} µJ)`;
+if (D.gonogo.length) {
+  $("gonogo").innerHTML = `<tr><th>Run</th><th>f (kHz)</th><th>September (W)</th><th>P_rem AMPL/2 (W)</th><th>Δ</th><th>P_rem phase (W)</th><th>Δ</th><th>Ipeak AMPL/2 (A)</th><th>Ipeak phase (A)</th></tr>` +
+    D.gonogo.map(r => `<tr><td>${esc(r.run)}</td><td class="n">${r.f_kHz}</td><td class="n">${f3(r.september_W)}</td><td class="n">${f3(r.p_remaining_W)}</td><td class="n">${sgn(r.delta_W)}</td><td class="n">${f3(r.p_remaining_phase_W)}</td><td class="n">${sgn(r.delta_phase_W)}</td><td class="n">${f3(r.ipeak_A)}</td><td class="n">${f3(r.ipeak_phase_A)}</td></tr>`).join("");
+} else $("gonogo").outerHTML = '<p class="empty">No anchor at 50 / 60 / 70 kHz has results yet.</p>';
+const short = Object.values(D.groups).flat().filter(f => f.status === "done" && f.expected_frames && f.frames < f.expected_frames);
+if (short.length) $("framesnote").innerHTML = `<div class="note bad">${short.length} config(s) have fewer scope frames than current steps (e.g. ${esc(short[0].name)}: ${short[0].frames} of ${short[0].expected_frames}, <code>"Sequence"</code> in the config). Their missing steps get no AMPL/2 Ipeak: use the phase column for those.</div>`;
+
+// ---------------------------------------------------------------- P_remaining(f)
+const P = D.points;
+const steps = [...new Set(P.map(p => p.step))].sort((a, b) => a - b);
+const byStep = s => P.filter(p => p.step === s).sort((a, b) => a.f_kHz - b.f_kHz);
+const hover = p => `${esc(p.run)} · ${p.f_kHz} kHz · step ${p.step}<br>Ipeak ${f3(p.ipeak_A)} A (phase ${f3(p.ipeak_phase_A)})<br>P_in ${f3(p.p_in_W)} W · P_rem ${f3(p.p_remaining_W)} W`;
+const xs = [10, 100];
+const remTraces = steps.map(s => {
+  const pts = byStep(s), c = pts.map(p => !!p.resonance_candidate);
+  return {name: `step ${s} (${f2(pts.find(p => p.ipeak_phase_A != null)?.ipeak_phase_A)} A)`, x: pts.map(p => p.f_kHz), y: pts.map(p => p.p_remaining_W),
+          text: pts.map(p => hover(p) + (p.resonance_candidate ? "<br><b>resonance candidate</b>" : "")), hoverinfo: "text", mode: "lines+markers", type: "scatter",
+          marker: {size: c.map(x => x ? 14 : 6), line: {width: c.map(x => x ? 2.5 : 0), color: css("--bad")}},
+          visible: s === D.top_step || steps.length < 4 ? true : "legendonly"};
+});
+const reso = P.filter(p => p.resonance_candidate);
+const topFit = D.fits.find(f => f.step === D.top_step);
+if (topFit) remTraces.push({name: `fit step ${topFit.step}`, x: xs, y: xs.map(x => topFit.slope_W_per_kHz*x + topFit.intercept_W), mode: "lines", type: "scatter", line: {dash: "dot"}, hoverinfo: "skip"});
+if (P.length) {
+  remTraces.push({name: "September fit", x: xs, y: xs.map(x => S.slope_W_per_kHz*x + S.intercept_W), mode: "lines", type: "scatter", line: {dash: "dash", color: css("--ink2")}, hoverinfo: "skip"});
+  remTraces.push({name: "September", x: S.points.map(p => p.f_kHz), y: S.points.map(p => p.p_remaining_W), mode: "markers", type: "scatter", marker: {symbol: "x", size: 10, color: css("--ink")}});
+}
+plot("p-rem", remTraces, layout("f (kHz)", "P_remaining (W)"));
+$("fits").innerHTML = D.fits.length ? `<tr><th>Step</th><th>Points</th><th>Slope (mW/kHz)</th><th>Intercept (W)</th><th>Eoff (µJ, 1 switch)</th><th>R²</th></tr>` +
+  D.fits.map(f => `<tr><td>${f.step}</td><td class="n">${f.n}</td><td class="n">${(f.slope_W_per_kHz*1000).toFixed(2)}</td><td class="n">${f3(f.intercept_W)}</td><td class="n">${f.eoff_uJ.toFixed(3)}</td><td class="n">${f.r2.toFixed(4)}</td></tr>`).join("") +
+  `<tr><td>September</td><td class="n">3</td><td class="n">${(S.slope_W_per_kHz*1000).toFixed(2)}</td><td class="n">${f3(S.intercept_W)}</td><td class="n">${S.eoff_uJ.toFixed(3)}</td><td class="n">${S.r2.toFixed(4)}</td></tr>` : "";
+
+// ---------------------------------------------------------------- breakdown
+const T = byStep(D.top_step);
+const TERMS = [["p_mos_W", "MOSFET conduction"], ["p_inductor_W", "inductor DCR"], ["p_cap_esr_W", "capacitor ESR"], ["p_diode_deadtime_W", "diodes in dead time"], ["p_remaining_W", "P_remaining"]];
+const brk = T.length ? TERMS.map(([k, n]) => ({name: n, x: T.map(p => p.f_kHz), y: T.map(p => p[k]), type: "bar"})) : [];
+if (T.length) brk.push({name: "P_in", x: T.map(p => p.f_kHz), y: T.map(p => p.p_in_W), mode: "lines+markers", type: "scatter", line: {color: css("--ink")}});
+plot("p-break", brk, layout("f (kHz)", "W", {barmode: "stack"}));
+
+// ---------------------------------------------------------------- Ipeak
+const ip = P.filter(p => p.ipeak_A != null && p.ipeak_phase_A != null);
+const mx = Math.max(0.5, ...ip.map(p => Math.max(p.ipeak_A, p.ipeak_phase_A))) * 1.05;
+plot("p-ipeak", ip.length ? [
+  {name: "points", x: ip.map(p => p.ipeak_phase_A), y: ip.map(p => p.ipeak_A), text: ip.map(hover), hoverinfo: "text", mode: "markers", type: "scatter",
+   marker: {color: ip.map(p => p.f_kHz), colorscale: "Viridis", showscale: true, colorbar: {title: {text: "kHz"}}}},
+  {name: "equal", x: [0, mx], y: [0, mx], mode: "lines", type: "scatter", line: {dash: "dash", color: css("--ink2")}, hoverinfo: "skip"}
+] : [], layout("Ipeak from phase (A)", "Ipeak = AMPL/2 (A)", {showlegend: false}));
+
+// ---------------------------------------------------------------- Vbus and DMM
+plot("p-vbus", steps.map(s => { const pts = byStep(s); return {name: `step ${s}`, x: pts.map(p => p.f_kHz), y: pts.map(p => p.vbus_V), text: pts.map(hover), hoverinfo: "text", mode: "markers", type: "scatter"}; }),
+  layout("f (kHz)", "Vbus step mean (V)"));
+const ran = Object.entries(D.groups).flatMap(([g, fs]) => fs.filter(f => (f.dmm.V || []).length).map(f => ({g, f})));
+$("dmmsel").innerHTML = ran.map((r, i) => `<option value="${i}">${esc(r.g)} · ${r.f.f_kHz} kHz</option>`).join("");
+function drawDmm() {
+  const r = ran[+$("dmmsel").value]; if (!r) { plot("p-dmm", [], {}); return; }
+  const n = Math.max(r.f.dmm.V.length, r.f.dmm.I.length), idx = [...Array(n).keys()];
+  plot("p-dmm", [{name: "Vbus (V)", x: idx, y: r.f.dmm.V, mode: "lines+markers", type: "scatter"},
+                 {name: "I_dc (A)", x: idx, y: r.f.dmm.I, mode: "lines+markers", type: "scatter", yaxis: "y2"}],
+    layout("sample", "V", {yaxis2: {title: {text: "A"}, overlaying: "y", side: "right", gridcolor: "rgba(0,0,0,0)"}}));
+}
+$("dmmsel").onchange = drawDmm; drawDmm();
+
+// ---------------------------------------------------------------- resonance, dtc, configs
+$("reso").innerHTML = reso.length ? `<table><tr><th>Run</th><th>f (kHz)</th><th>Step</th><th>P_rem (W)</th></tr>` +
+  reso.map(p => `<tr><td>${esc(p.run)}</td><td class="n">${p.f_kHz}</td><td class="n">${p.step}</td><td class="n">${f3(p.p_remaining_W)}</td></tr>`).join("") + `</table><div class="sub">Flag only: exclusions are decided in #13, with the waveforms.</div>`
+  : '<p class="empty">None flagged (needs at least 5 frequencies per step).</p>';
+$("dtc").innerHTML = D.dtc.length ? `<table><tr><th>Run</th><th>f (kHz)</th><th>P_rem comp off (W)</th><th>P_rem comp on (W)</th><th>Δ</th></tr>` +
+  D.dtc.map(r => `<tr><td>${esc(r.run)}</td><td class="n">${r.f_kHz}</td><td class="n">${f3(r.p_remaining_off_W)}</td><td class="n">${f3(r.p_remaining_on_W)}</td><td class="n">${r.p_remaining_on_W != null && r.p_remaining_off_W != null ? sgn(r.p_remaining_on_W - r.p_remaining_off_W) : "–"}</td></tr>`).join("") + "</table>"
+  : '<p class="empty">No group with <code>"DeadTimeComp": 1</code> has run.</p>';
+$("configs").innerHTML = Object.entries(D.groups).map(([g, fs]) => `<h3 style="font-size:15px;margin:14px 0 4px">${esc(g)}</h3><div class="scroll"><table>
+  <tr><th>f (kHz)</th><th>Status</th><th>Scope frames</th><th>Scope FREQ (kHz)</th><th>DMM samples V / I</th><th>Screenshots</th><th>Updated</th></tr>` +
+  fs.map(f => { const [ic, cl] = STATUS[f.status];
+    const fq = f.scope_freq_Hz.filter(x => x != null), off = fq.some(x => Math.abs(x/1000 - f.f_kHz) > 0.02*f.f_kHz);
+    const shots = f.shots.length ? f.shots.slice(0, 8).map((s, i) => `<a href="${esc(s)}">${i + 1}</a>`).join(" ") + (f.shots.length > 8 ? ` +${f.shots.length - 8}` : "") : "–";
+    return `<tr><td class="n">${f.f_kHz}</td><td><span class="badge b-${cl}">${ic} ${f.status}</span></td>
+      <td class="n">${f.status === "not run" ? "–" : `<span class="${f.frames < (f.expected_frames || 0) ? "badge b-bad" : ""}">${f.frames} / ${f.expected_frames ?? "?"}</span>`}</td>
+      <td class="n">${fq.length ? `<span class="${off ? "badge b-bad" : ""}">${fq.map(x => (x/1000).toFixed(2)).join(", ")}</span>` : "–"}</td>
+      <td class="n">${(f.dmm.V || []).length} / ${(f.dmm.I || []).length}</td><td>${shots}</td><td class="n">${ago(f.updated)}</td></tr>`; }).join("") + "</table></div>").join("");
+
+// ---------------------------------------------------------------- live reload (skipped while you are zooming or hovering)
+if (WATCH) {
+  let touched = 0; ["mousedown", "wheel", "keydown", "touchstart"].forEach(ev => addEventListener(ev, () => touched = Date.now(), {passive: true}));
+  setInterval(() => { if (Date.now() - touched > 45000) location.reload(); }, Math.max(5, WATCH) * 1000);
+}
+</script>
+</body>
+</html>

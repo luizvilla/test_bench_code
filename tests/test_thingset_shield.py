@@ -384,7 +384,9 @@ class TestSupervisorProtocolSwitch(unittest.TestCase):
 
     def test_session_configs_use_thingset(self):
         root = os.path.join(os.path.dirname(__file__), "..", "sessions", "2026-11-27")
-        paths = [os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs if f.endswith(".json")]
+        # base configs and generated run configs only: not the dry-run reports nor the results.json of a run
+        paths = [os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs
+                 if f.endswith(".json") and f.startswith(("base-config", "PhaseShift_", "DutyShift_"))]
         self.assertGreater(len(paths), 2)
         for path in paths:
             with open(path) as f:
