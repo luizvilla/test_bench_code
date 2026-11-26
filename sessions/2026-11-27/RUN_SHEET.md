@@ -53,5 +53,5 @@ See [`calculations/README.md`](../../calculations/README.md), "Open questions on
 
 ## Verified tonight (SPOC bench, no power stage)
 
-- [Firmware check](dry-run/firmware-check.md): 252/252 (frequency on the 26 points, 183 phase points within ±4 ns, dead time, GPIO 9 pulse, phase steps, stops).
-- Supervisor dry run (real `supervisor_script` on every config, instruments stubbed, real SPIN): see `dry-run/supervisor-*.md`.
+- [Firmware check](dry-run/firmware-check.md): 269/270 (frequency on the 26 points, 183 phase points within ±4 ns, dead time, dead-time compensation, GPIO 9 pulse, phase steps, stops). The one FAIL is a capture artefact at 10 kHz, compensation OFF, on PA8; the hand measurement in the report shows the firmware is right.
+- Supervisor dry run: 26/26 configs (real `supervisor_script` on every config, instruments stubbed, real SPIN): see `dry-run/supervisor-*.md`.
