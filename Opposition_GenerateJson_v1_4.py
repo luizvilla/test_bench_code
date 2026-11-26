@@ -8,6 +8,7 @@
 # GPL v3
 # Rev Maxime Ferrand 2024-06-24 : Phi limitation between 0 and Limited_PHI in baseconfig. 
 # Rev Maxime Ferrand 2024-06-24 : Added and adapted Stephane Martin's code to generate the json files in a specific folder.
+# Rev 2026-11-26 (ticket #9): float phase (2 decimals), PhaseInit one step below first point, optional base-config path argument.
 
 from datetime import datetime
 
@@ -19,6 +20,30 @@ import sys
 # -----------------------------
 # Defenitions
 # -----------------------------
+PHASE_DECIMALS = 2  # phase is written as float degrees (firmware: float once ticket #7 lands, integer truncation before)
+
+
+def phaseSweepBounds(phases):
+    """Return (PhaseInit, PhaseFinal, PhaseStep) in float degrees for one column of phase points.
+
+    The supervisor sweeps PhaseInit, PhaseInit+PhaseStep, ... up to PhaseFinal.
+    PhaseInit is set one step BELOW the first measurement point, because the OnlyScripts
+    sweep loses the first phase point (skip bug): the lead-in point absorbs it.
+    If that lead-in would be negative, PhaseInit falls back to the first point (old behaviour)
+    and a warning is printed: lower Imin or add current points.
+    """
+    phases = np.sort(np.asarray(phases, dtype=float))
+    first, last = phases[0], phases[-1]
+    step = np.mean(np.diff(phases)) if len(phases) > 1 else first
+    init = first - step
+    if init < -1e-9:
+        print(f"WARNING: lead-in phase {init:.2f} deg < 0, PhaseInit = first point {first:.2f} deg "
+              f"(its measurement may be skipped). Lower Imin or increase nbPointsI.")
+        init = first
+    r = lambda x: float(np.round(x, PHASE_DECIMALS)) + 0.0  # + 0.0 turns -0.0 into 0.0
+    return r(max(init, 0.0)), r(last), r(step)
+
+
 def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, frequencyList, mode: str) -> int:
     """Génère un fichier JSON par couple (voltage, fréquence) dans des dossiers nommés Voltage_XX_YYYkHz"""
 
@@ -31,6 +56,7 @@ def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, fre
             min_val = int(np.min(column_data))
             max_val = np.max(column_data)
             voltage = int(voltageRange[i])
+            phase_init, phase_final, phase_step = phaseSweepBounds(column_data) if mode == "Phase" else (None, None, None)
 
             # Création du dossier Voltage_XX_YYYkHz
             subfolder_name = f"Voltage_{voltage}_{freq_khz}kHz"
@@ -43,9 +69,9 @@ def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, fre
                 "VoltageWrite": voltage,
                 "frequencyPWM": freq,
                 "InitialPhaseShiftPWM": Commonparameters["InitialPhaseShiftPWM"],  # << Valeur fixée
-                "PhaseInit": min_val,
-                "PhaseFinal": int(step * (nbPointsI - 1) + min_val) + 1,
-                "PhaseStep": int(np.round(step)),
+                "PhaseInit": phase_init,
+                "PhaseFinal": phase_final,
+                "PhaseStep": phase_step,
                 "DutyInit": 0,
                 "DutyFinal": 0,
                 "DutyStep": 0
@@ -85,7 +111,8 @@ def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, fre
 # -----------------------------
 if __name__ == "__main__": 
     # Load base config
-    base_config_path = "base-config.json"
+    # Optional argument: path to a base config (default: base-config.json in the current folder)
+    base_config_path = sys.argv[1] if len(sys.argv) > 1 else "base-config.json"
     with open(base_config_path, 'r') as f:
         base_config = json.load(f)
     
@@ -121,7 +148,7 @@ if __name__ == "__main__":
 
         # Phase Shift Mode
         delta_I = Ipeak[:, None]*2  # phi is calculated with delta I, but we set the peak current that is switched
-        Phi = np.round(360 * delta_I * InductorL * freq * 1e-6 / Vdc, decimals=0)  # in degrees
+        Phi = np.round(360 * delta_I * InductorL * freq * 1e-6 / Vdc, decimals=PHASE_DECIMALS)  # in degrees (float)
 
         if np.any(Phi < 0) or np.any(Phi > Limited_PHI):
             print(f"##############################################")

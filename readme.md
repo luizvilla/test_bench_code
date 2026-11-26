@@ -40,6 +40,12 @@ A supervisor has been written `Supervisor_script.py` which will do the test sequ
 
 The project is started by interface.py
 
+Phase shift is written by `Opposition_GenerateJson_v1_4.py` as float degrees (2 decimals) and swept as floats by the supervisor (since Nov. 2026).
+`PhaseInit` is a lead-in point one step below the first measurement point, which works around the skipped-first-point issue.
+Until the SPIN firmware accepts float degrees (ticket #7), the firmware truncates the phase to an integer degree.
+Both scripts take an optional base-config path: `python3 Opposition_GenerateJson_v1_4.py path/to/base-config.json`, same for `supervisor_script.py`.
+Run the unit tests (no hardware needed) with `python3 -m unittest discover -s tests`.
+
 
 Requirements
 ------------
