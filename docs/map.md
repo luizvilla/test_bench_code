@@ -25,14 +25,14 @@ flowchart LR
   end
 
   subgraph Tonight["Ready for 27 November"]
-    N2["🔨 #2 Bench core<br/>power_tuesday-v2"]:::open
-    N3["🔨 #3 Bench app on new core<br/>firmware/"]:::blocked
-    N5["🔎 #5 ThingSet migration?"]:::wip
-    N6["👤 #6 ThingSet: now,<br/>later or not?"]:::blocked
+    N2["✓ #2 Bench core<br/>power_tuesday-v2"]:::done
+    N3["🔨 #3 Bench app on new core<br/>firmware/"]:::wip
+    N5["✓ #5 ThingSet migration?"]:::done
+    N6["👤 #6 ThingSet: now,<br/>later or not?"]:::open
     N4["🔨 #4 Phase reduction<br/>and stop fix"]:::blocked
     N7["🔨 #7 Fractional phase<br/>(float °)"]:::blocked
     N8["🔨 #8 Dead-time duty<br/>compensation"]:::blocked
-    N9["🔨 #9 Sweep configs<br/>10–100 kHz + anchors"]:::wip
+    N9["✓ #9 Sweep configs<br/>10–100 kHz + anchors"]:::done
     N11["🔨 #11 Processing script<br/>= Excel"]:::wip
     N10["🔨 #10 SPOC dry run<br/>of the sweep"]:::blocked
     N12["👤 #12 Session plan<br/>27 Nov"]:::blocked
