@@ -211,13 +211,20 @@ def _scope_values(rdata: dict, step: int, mtype: str):
     return None
 
 
-def load_session_folder(folder: str, circuit: dict | None = None) -> pd.DataFrame:
+IPEAK_SOURCES = ("scope", "scope-pp", "phase")
+
+
+def load_session_folder(
+    folder: str, circuit: dict | None = None, ipeak_source: str = "scope"
+) -> pd.DataFrame:
     """Operating points of a supervisor session folder.
 
     ``folder`` is ParentFolder/Experiment_name (or its PhaseShift sub-folder).
     For each PhaseShift/Voltage_<V>_<F>kHz and each phase step:
       * Vbus, I_dc : step means of the DMM voltage/current CSVs (TraitementV10)
-      * Ipeak      : scope measurement 'AMPL' in results.json (TraitementV10 convention)
+      * Ipeak      : ipeak_source = "scope"    -> scope 'AMPL' value (TraitementV10 convention)
+                                    "scope-pp" -> scope 'AMPL' / 2 (if AMPL is peak-to-peak)
+                                    "phase"    -> Vbus*phase/180 / (4 L f) from the PhaseTab
       * Irms_ind   : scope measurement 'RMS' if present, else NaN (-> equation)
       * f, td, L   : frequencyPWM, DeadTimePWM [ns], InductorL [uH] of the PhaseShift json
     Points with the same Vbus level and step index form one fit group.
@@ -250,9 +257,18 @@ def load_session_folder(folder: str, circuit: dict | None = None) -> pd.DataFram
         means = segment_means(
             read_supervisor_series(csv_i[0]), read_supervisor_series(csv_v[0]), nb
         )
+        phases = cfg.get("PhaseTab") or list(
+            range(cfg.get("PhaseInit", 0), cfg.get("PhaseFinal", 0) + 1, cfg.get("PhaseStep", 1))
+        )
         params = {**DEFAULT_CIRCUIT, **cfg.get("LossModel", {}), **(circuit or {})}
         for i, (i_dc, v_bus) in enumerate(means, start=1):
-            ipeak = _scope_values(rdata, i, "AMPL")
+            ampl = _scope_values(rdata, i, "AMPL")
+            if ipeak_source == "phase":
+                ipeak = v_bus * phases[i - 1] / 180 / (4 * cfg["InductorL"] * 1e-6 * freq)
+            elif ampl is None:
+                ipeak = None
+            else:
+                ipeak = ampl / 2 if ipeak_source == "scope-pp" else ampl
             irms = _scope_values(rdata, i, "RMS")
             rows.append(
                 {
@@ -272,9 +288,9 @@ def load_session_folder(folder: str, circuit: dict | None = None) -> pd.DataFram
     return pd.DataFrame(rows, columns=INPUT_COLUMNS)
 
 
-def load(source: str, circuit: dict | None = None) -> pd.DataFrame:
+def load(source: str, circuit: dict | None = None, ipeak_source: str = "scope") -> pd.DataFrame:
     if os.path.isdir(source):
-        return load_session_folder(source, circuit)
+        return load_session_folder(source, circuit, ipeak_source)
     if source.lower().endswith((".xlsx", ".xlsm")):
         df = load_reference_excel(source)
     else:
@@ -299,9 +315,12 @@ def main(argv=None) -> int:
     ap.add_argument("-o", "--output", help="write the full per-point breakdown to this CSV")
     ap.add_argument("--params", help="JSON file overriding circuit parameters "
                     f"({', '.join(DEFAULT_CIRCUIT)})")
+    ap.add_argument("--ipeak", choices=IPEAK_SOURCES, default="scope",
+                    help="session folders only: where Ipeak comes from (default: scope AMPL)")
     a = ap.parse_args(argv)
     circuit = json.load(open(a.params)) if a.params else None
-    res = analyse(load(a.source, circuit))
+    with np.errstate(invalid="ignore"):
+        res = analyse(load(a.source, circuit, a.ipeak))
 
     with pd.option_context("display.width", 200, "display.max_columns", 50):
         print(res.points[SUMMARY_COLUMNS].to_string(index=False, float_format=lambda v: f"{v:.4f}"))
@@ -314,6 +333,10 @@ def main(argv=None) -> int:
         print("No fit: need >= 2 frequencies for the same group.")
     if (res.points["irms_source"] == "equation").any():
         print("WARNING: no scope RMS current for some points; Irms from the equation (row 46).")
+    bad = res.points[~res.points["phi_deg"].between(0, 180)]
+    if len(bad):
+        print(f"WARNING: phase shift outside 0..180 deg for groups {sorted(set(bad['group']))}: "
+              "check Ipeak (try --ipeak scope-pp or --ipeak phase).")
     if a.output:
         res.points.to_csv(a.output, index=False)
         print(f"breakdown written to {a.output}")

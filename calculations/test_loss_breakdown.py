@@ -80,3 +80,55 @@ def test_fixed_power_matches_excel(result, f_khz):
     expected = excel_cached_values()[f_khz][43]
     row = result.points[result.points["f_kHz"] == f_khz].iloc[0]
     assert row["p_fixed_W"] == pytest.approx(expected, rel=REL_TOL)
+
+
+# --------------------------------------------------------------------------- session folder
+
+
+def write_session(tmp_path, inputs):
+    """Write a supervisor-style session folder (ParentFolder/Experiment_name)
+    whose DMM CSVs and scope results carry the given per-frequency inputs."""
+    session = tmp_path / "session"
+    for p in inputs:
+        f = int(p["f_kHz"])
+        d = session / "PhaseShift" / f"Voltage_60_{f}kHz"
+        d.mkdir(parents=True)
+        cfg = {"frequencyPWM": f * 1000, "DeadTimePWM": round(p["td_us"] * 1000),
+               "InductorL": p["L_uH"], "nbPointsI": 1, "PhaseTab": [90]}
+        (d / f"PhaseShift_Voltage_60V_Freq{f}kHz.json").write_text(json.dumps(cfg))
+        (d / "csv-10_00_00-16_09_2026-Voltage.csv").write_text(json.dumps([p["vbus_V"]] * 5))
+        (d / "csv-10_00_00-16_09_2026-Current.csv").write_text(json.dumps([p["i_dc_A"]] * 5))
+        (d / "results.json").write_text(json.dumps({"Data1": {
+            "1": {"type": "FREQ", "channel": 1, "value": f * 1000.0},
+            "2": {"type": "AMPL", "channel": 2, "value": p["ipeak_A"]},
+            **({} if p["irms_ind_A"] is None else
+               {"3": {"type": "RMS", "channel": 2, "value": p["irms_ind_A"]}}),
+        }}))
+    return session
+
+
+def test_session_folder_reproduces_excel_through_cli(tmp_path, capsys):
+    inputs = lb.load_reference_excel(EXCEL).to_dict("records")
+    session = write_session(tmp_path, inputs)
+    out_csv = tmp_path / "breakdown.csv"
+
+    assert lb.main([str(session), "-o", str(out_csv)]) == 0
+
+    printed = capsys.readouterr().out
+    assert "17.43 mW/kHz" in printed and "+ 3.220 W" in printed and "4.3572 uJ" in printed
+    import pandas as pd
+    got = pd.read_csv(out_csv).set_index("f_kHz")
+    for f_khz, expected in excel_cached_values().items():
+        assert got.loc[f_khz, "p_remaining_W"] == pytest.approx(expected[36], rel=1e-9)
+        assert got.loc[f_khz, "irms_source"] == "scope"
+
+
+def test_session_without_scope_rms_falls_back_to_equation(tmp_path):
+    inputs = lb.load_reference_excel(EXCEL).to_dict("records")
+    for p in inputs:
+        p["irms_ind_A"] = None
+    session = write_session(tmp_path, inputs)
+    pts = lb.analyse(lb.load(str(session))).points.set_index("f_kHz")
+    for f_khz, expected in excel_cached_values().items():
+        assert pts.loc[f_khz, "irms_source"] == "equation"
+        assert pts.loc[f_khz, "irms_used_A"] == pytest.approx(expected[46], rel=1e-9)
