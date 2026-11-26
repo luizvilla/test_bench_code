@@ -56,6 +56,11 @@ flowchart LR
     O3["Safety API PR<br/>(code/Core2)"]:::out
   end
 
+  subgraph New["New tickets: place them in tools/devmap/layout.toml"]
+    N17["🔨 #17 Processing script runs on<br/>the 27 Nov configs (float<br/>phases, lead-in)"]:::wip
+    N18["🔨 #18 Command center: one HTML<br/>with every 27 Nov result<br/>and interactive plots"]:::wip
+  end
+
   N2 --> N3
   N3 --> N4
   N3 --> N7
