@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 from comm_protocol.src import find_devices
 from comm_protocol.src.Shield_Class import Shield_Device
+from lib.thingset_shield import ThingSetShield
 
 import lib.tools as tools
 from lib.phase_sweep import phase_sweep_values
@@ -121,6 +122,12 @@ class Supervisor:
 
         self.microcontroller_vid = self.config['shield_vid']
         self.microcontroller_pid = self.config['shield_pid']
+        # "string" (comm_protocol firmware, default) or "thingset" (ticket #16)
+        self.shield_protocol = str(self.config.get('shield_protocol', 'string')).lower()
+        if self.shield_protocol not in ('string', 'thingset'):
+            raise ValueError(f"shield_protocol must be 'string' or 'thingset', got {self.shield_protocol!r}")
+        # Dead-time duty compensation (ThingSet firmware only); None = not sent
+        self.DeadTimeComp = self.config.get('DeadTimeComp')
 
 
         # 3. Create a single resource manager instance
@@ -250,6 +257,12 @@ class Supervisor:
             print("Microcontroller is already opened.")
             return
 
+        if self.shield_protocol == 'thingset':
+            # Picks the if02 ThingSet shell port, never the if00 console
+            self.microcontroller = ThingSetShield.from_config(self.config)
+            print(f"Opened microcontroller (ThingSet) on port {self.microcontroller.port}")
+            return
+
         # Find the microcontroller ports
         ports = find_devices.find_shield_device_ports(self.microcontroller_vid, self.microcontroller_pid)
         if not ports:
@@ -266,7 +279,9 @@ class Supervisor:
         if self.microcontroller is not None:
             try:
                 print("Closing microcontroller.")
-                # No explicit close() method in Shield_Device, so just set to None
+                # Shield_Device has no close(); ThingSetShield closes its port
+                if hasattr(self.microcontroller, "close"):
+                    self.microcontroller.close()
             except Exception as e:
                 print(f"Error closing microcontroller: {e}")
             finally:
@@ -315,6 +330,12 @@ class Supervisor:
         self.microcontroller_send_command("DEAD_TIME_RISING", "LEG1", self.DeadTimePWM)
         self.microcontroller_send_command("DEAD_TIME_FALLING", "LEG2", self.DeadTimePWM)
         self.microcontroller_send_command("DEAD_TIME_FALLING", "LEG1", self.DeadTimePWM)
+
+        if self.DeadTimeComp is not None:
+            if self.shield_protocol == 'thingset':
+                self.microcontroller_send_command("DEADTIME_COMP", "ON" if self.DeadTimeComp else "OFF")
+            elif self.DeadTimeComp:
+                raise ValueError("DeadTimeComp needs the ThingSet firmware (shield_protocol: 'thingset')")
 
         self.microcontroller_send_command("PHASE_SHIFT", "LEG2", self.InitialPhaseShiftPWM)
 
