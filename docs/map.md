@@ -37,7 +37,7 @@ flowchart LR
     N11["✓ #11 Processing script<br/>= Excel"]:::done
     N10["✓ #10 SPOC dry run<br/>of the sweep"]:::done
     N12["👤 #12 Session plan<br/>27 Nov"]:::wip
-    N17["🔨 #17 Processing script<br/>on float configs"]:::wip
+    N17["✓ #17 Processing script<br/>on float configs"]:::done
     N18["🔨 #18 Command center<br/>HTML + plots"]:::wip
   end
 
