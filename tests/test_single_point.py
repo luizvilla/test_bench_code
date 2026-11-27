@@ -31,6 +31,22 @@ class SinglePointPhaseTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             sp.initial_phase(3, 2.4, requested=2.4)
 
+    def test_il_mean_added_once(self):
+        base = [{"type": "FREQ", "channel": 1}, {"type": "AMPL", "channel": 2}, {"type": "RMS", "channel": 2}]
+        m = sp.with_il_mean(base)
+        self.assertEqual(m[-1], {"type": "MEAN", "channel": 2})
+        self.assertEqual(len(m), 4)
+        self.assertEqual(sp.with_il_mean(m), m)
+        self.assertEqual(len(base), 3)   # input untouched
+
+    def test_dtc_modes(self):
+        # (DeadTimeComp at setup, DMM bursts)
+        self.assertEqual(sp.dtc_plan("off"), (0, 2))
+        self.assertEqual(sp.dtc_plan("on"), (1, 2))
+        self.assertEqual(sp.dtc_plan("ab"), (0, 3))
+        with self.assertRaises(ValueError):
+            sp.dtc_plan("maybe")
+
     def test_default_frequency_is_10_khz(self):
         self.assertEqual(sp.DEFAULT_FREQ, 10000)
 

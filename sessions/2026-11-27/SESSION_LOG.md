@@ -16,9 +16,9 @@ Operating point: 60 V · 3.5 A peak (0.5–3.5 A, 7 points) · 300 ns dead time 
 
 | f (kHz) | P_remaining, AMPL/2 (W) | P_remaining, `--ipeak phase` (W) | September (W) | Δ (W) |
 |---|---|---|---|---|
-| 50 | | | 4.089 | |
-| 60 | | | 4.272 | |
-| 70 | | | 4.437 | |
+| 50 | 3.601 | 3.614 | 4.089 | −0.488 (−11.9 %) |
+| 60 | 4.134 | 4.143 | 4.272 | −0.138 (−3.2 %) |
+| 70 | 3.990 | 4.001 | 4.437 | −0.447 (−10.1 %) |
 
 Verdict (GO / NO-GO) and why:
 
@@ -82,6 +82,8 @@ Verdict (GO / NO-GO) and why:
 - 14:3x: single point too fast at the bench (Luiz). `single_point_manual.py` reworked: scope 1 live all the time (AUTO on C1, measurements shown without statistics, values read live with PAVA), every step on Enter, phase held until Enter, DMMs on software trigger: 30 readings BEFORE the step (3°) and 30 DURING. Tested without input voltage: 30 + 30 per DMM, scopes AUTO after.
 - 14:5x: **`--fast`** for `supervisor_script.py` (no scope-1 frame bitmaps, no `plt.pause(5)`, scope 2 picture kept) and **`CurrentLimit` 0.5 → 0.2 A** (both base configs, configs regenerated, only this key; supply reads back 0.19999 A).
 - 14:5x: anchors in `--fast` meant as a dry run, but **the board was connected** (Luiz: fine): the 5 V guard stopped after 50 kHz. **First powered config, 50 kHz, 60 V, 0.2 A limit:** 7/7 frames, 210/210 DMM readings, Vbus 59.98 → 59.83 V (no CC), Pin 0.26 → 7.78 W. Ipeak AMPL/2 0.67/1.04/1.47/2.04/2.54/3.04/3.54 A vs phase 0.50/1.00/…/3.49 A. **P_remaining at 3.5 A: 3.83 W (AMPL/2 and phase agree) vs September 4.089 W (−0.26 W, −6 %)**. 64 s for the config in `--fast` (scope-1 value reads 19 s, scope 2 pictures 7.6 s).
+- 14:21–14:24: **A_anchors, real, `--fast`** (60 V, 0.2 A limit): 3/3 configs, 7/7 frames, 210/210 DMM readings, FREQ exact, Vbus 59.83–59.84 V at 3.5 A, 3 min. At 3.5 A: Ipeak AMPL/2 3.54–3.57 A vs phase 3.49 A; Pin 7.48 / 7.80 / 7.24 W; P_remaining (table above). Fit over 3.5 A: 19.4 mW/kHz · f + 2.74 W, R² 0.50 (September 17.43 mW/kHz · f + 3.22 W, R² 0.999). Repeatability: the 14:5x 50 kHz config gave 3.83 W, this run 3.60 W. Breakdowns: `A_anchors_breakdown.csv`, `A_anchors_breakdown_phase.csv`; command center regenerated.
+- 15:0x: DC offset seen on the inductor current (Luiz). `single_point_manual.py --dtc off|on|ab`: `ab` measures DURING with dead-time compensation off, then switches it on at the same held point (third DMM burst + scope reading); iL mean (MEAN C2) added to the scope measures and the summary. Single point default 10 kHz, initial phase ≤ half the step. Not yet run on the bench.
 - Note for the supervisor: `TDKZ650_1_U.open_hv_power_supply` sends `*IDN?` to every ttyACM port and, if none answers "TDK-LAMBDA", falls back to the config address `ASRL/dev/ttyACM0`, which is now the SPIN console. Do not start a run until the supply answers `*IDN?`.
 
 ## Answers from Nicolas

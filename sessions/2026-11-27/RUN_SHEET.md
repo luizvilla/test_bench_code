@@ -27,6 +27,7 @@ Sequence: Enter (setup, legs at 3°) → raise the supply, Enter (BEFORE burst) 
 ```bash
 MPLBACKEND=Agg python3 tools/single_point_manual.py                  # 10 kHz, 0.5 A peak, 60 V (2.4 deg, from 1.2 deg)
 MPLBACKEND=Agg python3 tools/single_point_manual.py --freq 50000     # 50 kHz (12 deg, from 3 deg)
+MPLBACKEND=Agg python3 tools/single_point_manual.py --dtc ab        # iL DC offset: dead-time compensation off, then on, same held point
 MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0      # next point
 ```
 
