@@ -15,6 +15,7 @@
     "Limited_PHI": 175,
     "DutyPWM": 0.5,
     "DutyTrimDiff": -0.0004,
+    "DutyTrimMaxFreq": 60000,
     "frequencyPWM": 100000,
     "DeadTimePWM": 300,
     "VoltageLimit": 100,

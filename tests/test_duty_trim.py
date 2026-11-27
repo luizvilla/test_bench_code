@@ -32,6 +32,13 @@ class LegDutiesTest(unittest.TestCase):
         self.assertAlmostEqual(d1 - d2, -0.0004)
         self.assertAlmostEqual((d1 + d2) / 2, 0.5)
 
+    def test_cutoff_frequency(self):
+        # at 100 kHz 0.0002 per leg is below one timer tick: no trim above the cutoff
+        self.assertEqual(leg_duties(0.5, -0.0004, freq=100000, max_freq=60000), (0.5, 0.5))
+        self.assertEqual(leg_duties(0.5, -0.0004, freq=50000, max_freq=60000), (0.4998, 0.5002))
+        self.assertEqual(leg_duties(0.5, -0.0004, freq=60000, max_freq=60000), (0.4998, 0.5002))
+        self.assertEqual(leg_duties(0.5, -0.0004, freq=100000), (0.4998, 0.5002))   # no cutoff given
+
     def test_out_of_range(self):
         with self.assertRaises(ValueError):
             leg_duties(0.5, 0.2)     # 10 % per leg: a typo, not a trim
@@ -68,11 +75,17 @@ class SupervisorTrimTest(unittest.TestCase):
         self.assertAlmostEqual(writes[0][2], 0.4998)
         self.assertAlmostEqual(writes[1][2], 0.5002)
 
+    def test_trim_off_above_cutoff(self):
+        writes = self._setup_writes(DutyTrimDiff=-0.0004, DutyTrimMaxFreq=60000, frequencyPWM=100000)
+        self.assertEqual([w[2] for w in writes], [0.5, 0.5])
+
     def test_grid_configs_carry_the_trim(self):
         # B_grid regenerated with the trim; A_anchors kept as run (no trim) since its results exist
         grid = os.path.join(ROOT, "sessions/2026-11-27/configs/B_grid/PhaseShift/Voltage_60_55kHz/"
                                   "PhaseShift_Voltage_60V_Freq55kHz.json")
-        self.assertAlmostEqual(json.load(open(grid))["DutyTrimDiff"], -0.0004)
+        cfg = json.load(open(grid))
+        self.assertAlmostEqual(cfg["DutyTrimDiff"], -0.0004)
+        self.assertEqual(cfg["DutyTrimMaxFreq"], 60000)
 
 
 if __name__ == "__main__":

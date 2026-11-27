@@ -324,7 +324,8 @@ class Supervisor:
         self.microcontroller_send_command("POWER_ON")
 
         # We assume the JSON config defines sup.DutyPWM, sup.frequencyPWM, sup.DeadTimePWM, etc.
-        duty1, duty2 = leg_duties(self.DutyPWM, self.DutyTrimDiff)
+        duty1, duty2 = leg_duties(self.DutyPWM, self.DutyTrimDiff, self.frequencyPWM,
+                                  self.config.get('DutyTrimMaxFreq'))
         self.microcontroller_send_command("DUTY", "LEG1", duty1)
         self.microcontroller_send_command("DUTY", "LEG2", duty2)
 

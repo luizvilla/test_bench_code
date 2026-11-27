@@ -214,7 +214,7 @@ def main():
         cmd("LEG", "LEG1", "ON")
         cmd("LEG", "LEG2", "ON")
         cmd("POWER_ON")
-        duty1, duty2 = leg_duties(cfg["DutyPWM"], cfg.get("DutyTrimDiff", 0.0))
+        duty1, duty2 = leg_duties(cfg["DutyPWM"], cfg.get("DutyTrimDiff", 0.0), freq, cfg.get("DutyTrimMaxFreq"))
         cmd("DUTY", "LEG1", duty1)
         cmd("DUTY", "LEG2", duty2)
         cmd("FREQUENCY", "LEG1", freq)
