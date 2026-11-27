@@ -45,6 +45,7 @@ flowchart LR
     N15["👤 #15 16 Sept raw data<br/>through the script"]:::open
     N13["👤 #13 Record the<br/>27 Nov results"]:::open
     N14["👤 #14 P_remaining(f)<br/>linear 10–100 kHz?"]:::blocked
+    N19["🔎 #19 Phase change ramp:<br/>needed, and where?"]:::open
     FG["fixed-term grid<br/>Vbus × dead time × Ipeak"]:::fog
     FC["capacitor vs<br/>frequency window"]:::fog
     FS["sim vs bench<br/>(upstream #10, #13)"]:::fog
@@ -83,6 +84,7 @@ flowchart LR
   N14 -.-> FG
   N14 -.-> FC
   N10 -.-> FU
+  N4 -.-> N19
   FG -.-> FZ
   FS -.-> FZ
   N14 --> FZ
