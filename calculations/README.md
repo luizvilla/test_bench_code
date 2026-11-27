@@ -48,8 +48,9 @@ Options: `--params p.json` overrides the circuit parameters
 0.845, `n_diodes_deadtime` 4 by default; a `LossModel` dict in the session's
 PhaseShift json is also honoured). `--ipeak scope|scope-pp|phase` chooses where
 Ipeak comes from in a session folder: the scope `AMPL` value as in
-`TraitementV10.py` (default), half of it, or `Vbus*phase/180/(4*L*f)` from
-the phase table.
+`TraitementV10.py`, half of it (default, AMPL is peak-to-peak), or
+`Vbus*phase/180/(4*L*f)` from the phase table. Step-by-step guide for
+running the script by hand: [HOWTO.md](HOWTO.md).
 
 Session folders are read with `TraitementV10.read_supervisor_series` and
 `TraitementV10.segment_means` (same CSV parsing and per-step averaging as
