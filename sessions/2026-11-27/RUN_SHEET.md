@@ -17,6 +17,18 @@ Everything below runs from the root of branch `session-2026-11-27`.
 8. **Scope frames = current steps:** 7 phase writes (no lead-in since 27 Nov), the scope records `nbPointsI` = 7 segmented frames, frame i = current step i; the legacy `"Sequence"` key is ignored. **Open — check after every config:** the scope sometimes loses the first sweep triggers (the old "skip bug": 0, 2, 3 and 4 of the first writes lost in four 50 kHz dry runs). `results.json` then holds fewer distinct frames (repeated values in the last ones) and the last frame is the return to 3°. Never query the scope during a run: a status query also drops frames.
 9. **Supply auto-detect:** the supervisor finds the supply by its USB vendor ID and selects it (`INST:NSEL`) before `*IDN?`, so it works after a power cycle; if no supply answers it stops with `HV power supply not found` instead of driving another port.
 
+## 0b. First power: one point, supply by hand
+
+`tools/single_point_manual.py` does one current step without touching the supply (it stays in LOCAL: press REM).
+It sets up the SPIN and arms the scopes and DMMs, waits while you raise the supply, takes one point (one phase write = one trigger), puts the phase back to 3°, waits while you lower the supply, then stops the legs and saves in the supervisor's layout.
+
+```bash
+MPLBACKEND=Agg python3 tools/single_point_manual.py                  # 50 kHz, 0.5 A peak, 60 V
+MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0      # next point
+```
+
+Check: 30 readings per DMM, scope 1 AMPL/2 near the asked Ipeak, Vbus and Idc in the summary. Ctrl-C stops the legs.
+
 ## 1. Anchors first: 50, 60, 70 kHz (≈ 10 min)
 
 **Command center** (second terminal, venv active, leave it running all session): `python3 tools/command_center.py --watch 10`, then open `sessions/2026-11-27/command-center.html`. One page regenerated as each config's results land: configs done/missing, the go/no-go table below, P_remaining(f) per current step with September, loss breakdown, Ipeak AMPL/2 vs phase, Vbus sag, resonance candidates, scope screenshots. Works without internet.

@@ -75,6 +75,7 @@ Verdict (GO / NO-GO) and why:
   - Bench test without HV (scope armed, both DMMs armed as the supervisor does, 7 writes at 0.626 s, count read 0.5 s after each write): with 2.5 s between DMM setup and first trigger, the **voltage DMM missed trigger 1** in 4/5 sweeps; with 6 s, 0 misses in 3/3. The current DMM never missed in this test.
   - GPIO 9 pulse is the same as the string firmware's (21 control periods = 2.1 ms, `owntech/main.cpp` on ReleaseCandidate); September used `delay_com` 0.6 too.
 - 14:03: **`dmm_init_delay` 2 → 4 s** (both base configs, 26 configs regenerated, only this key). 50 kHz validation run, normal timing, supply to 60 V: **7/7 scope frames** (0.626 s apart = writes 12…84°), **both DMMs 210 readings** (7 × 30; scope 2 FALLINGEDGES 210/210), off-screen FREQ 50 000 Hz per frame. Board input still disconnected: scope 2 C3 (supply side) TOP 60 V, but voltage DMM ≈ 0 V and iL ≈ noise, so `loss_breakdown` has no power to compute.
+- 14:1x: `tools/single_point_manual.py` (one point, supply by hand, never opened by the script). Tested without input voltage at 50 kHz / 0.5 A (12°): SPIN setup and stop OK, 30 + 30 DMM readings, scope 1 frame FREQ 50 000 Hz, `loss_breakdown` reads the folder.
 - Note for the supervisor: `TDKZ650_1_U.open_hv_power_supply` sends `*IDN?` to every ttyACM port and, if none answers "TDK-LAMBDA", falls back to the config address `ASRL/dev/ttyACM0`, which is now the SPIN console. Do not start a run until the supply answers `*IDN?`.
 
 ## Answers from Nicolas
