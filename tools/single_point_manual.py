@@ -36,6 +36,7 @@ import pyvisa as visa  # noqa: E402
 from lib.SDM3065X import SDM3065X  # noqa: E402
 from lib.SDS2104X_plus import SDS2104X_plus, parse_pava  # noqa: E402
 from lib.thingset_shield import ThingSetShield  # noqa: E402
+from lib.duty_trim import leg_duties  # noqa: E402
 from lib.tools import TOOL  # noqa: E402
 
 DEFAULT_BASE = os.path.join(ROOT, "sessions", "2026-11-27", "base-config_A_anchors.json")
@@ -213,8 +214,9 @@ def main():
         cmd("LEG", "LEG1", "ON")
         cmd("LEG", "LEG2", "ON")
         cmd("POWER_ON")
-        cmd("DUTY", "LEG1", cfg["DutyPWM"])
-        cmd("DUTY", "LEG2", cfg["DutyPWM"])
+        duty1, duty2 = leg_duties(cfg["DutyPWM"], cfg.get("DutyTrimDiff", 0.0))
+        cmd("DUTY", "LEG1", duty1)
+        cmd("DUTY", "LEG2", duty2)
         cmd("FREQUENCY", "LEG1", freq)
         for leg in ("LEG2", "LEG1"):
             cmd("DEAD_TIME_RISING", leg, cfg["DeadTimePWM"])

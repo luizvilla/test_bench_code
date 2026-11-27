@@ -79,6 +79,8 @@ def main():
     ap.add_argument("--ipeaks", type=float, nargs="+", default=[2.0], help="fixed points, A peak (default 2.0)")
     ap.add_argument("--vbus", type=float, default=60.0)
     ap.add_argument("--diff-points", type=int, default=9, help="differential sweep points (default 9)")
+    ap.add_argument("--diff-values", type=float, nargs="+", default=None,
+                    help="explicit Delta values instead of the sweep (e.g. 0 -0.0004 to check a trim)")
     ap.add_argument("--diff-only", action="store_true", help="differential sweep only (no common, no firmware comp)")
     ap.add_argument("--out", default=os.path.join(ROOT, "sessions", "2026-11-27", "configs", "offset_sweep"))
     ap.add_argument("--yes", action="store_true", help="do not ask before powering")
@@ -177,7 +179,7 @@ def main():
                 for k in range(5):                                   # COMMON: 0 .. 2x the firmware value
                     dlt = round(comp * k / 2, 5)
                     point("common", 0.5 - dlt, 0.5 - dlt, dlt)
-            for dd in sweep_points(diff_span, args.diff_points):     # DIFFERENTIAL
+            for dd in (args.diff_values or sweep_points(diff_span, args.diff_points)):   # DIFFERENTIAL
                 point("diff", 0.5 + dd / 2, 0.5 - dd / 2, dd)
             cmd("DUTY", "LEG1", 0.5); cmd("DUTY", "LEG2", 0.5)
             if not args.diff_only:

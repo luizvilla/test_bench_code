@@ -14,6 +14,7 @@
     "power_supply_ramp_delay": 0.1,
     "Limited_PHI": 175,
     "DutyPWM": 0.5,
+    "DutyTrimDiff": -0.0004,
     "frequencyPWM": 12000,
     "DeadTimePWM": 300,
     "VoltageLimit": 100,

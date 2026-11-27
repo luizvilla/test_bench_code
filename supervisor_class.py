@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from comm_protocol.src import find_devices
 from comm_protocol.src.Shield_Class import Shield_Device
 from lib.thingset_shield import ThingSetShield
+from lib.duty_trim import leg_duties
 
 import lib.tools as tools
 from lib.phase_sweep import phase_sweep_values
@@ -89,6 +90,7 @@ class Supervisor:
         # self.power_supply_ramp_delay = self.config.get('power_supply_ramp_delay', 0.1)
 
         self.DutyPWM = self.config['DutyPWM']
+        self.DutyTrimDiff = self.config.get('DutyTrimDiff', 0.0)   # D1 - D2, cancels the iL DC offset
         self.frequencyPWM = self.config['frequencyPWM']
         self.DeadTimePWM = self.config['DeadTimePWM']
         self.InitialPhaseShiftPWM = self.config['InitialPhaseShiftPWM']
@@ -322,8 +324,9 @@ class Supervisor:
         self.microcontroller_send_command("POWER_ON")
 
         # We assume the JSON config defines sup.DutyPWM, sup.frequencyPWM, sup.DeadTimePWM, etc.
-        self.microcontroller_send_command("DUTY", "LEG1", self.DutyPWM)
-        self.microcontroller_send_command("DUTY", "LEG2", self.DutyPWM)
+        duty1, duty2 = leg_duties(self.DutyPWM, self.DutyTrimDiff)
+        self.microcontroller_send_command("DUTY", "LEG1", duty1)
+        self.microcontroller_send_command("DUTY", "LEG2", duty2)
 
         self.microcontroller_send_command("FREQUENCY", "LEG1", self.frequencyPWM)
         self.microcontroller_send_command("DEAD_TIME_RISING", "LEG2", self.DeadTimePWM)
