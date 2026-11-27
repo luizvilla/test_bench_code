@@ -260,8 +260,8 @@ def load_session_folder(
         )
         phases = cfg.get("PhaseTab")
         if not phases:
-            # The phases the supervisor actually sent (float-safe). The first one is the generator's
-            # lead-in, whose measurement the OnlyScripts sweep loses: step i is sweep point i.
+            # The phases the supervisor actually sent (float-safe): step i is sweep point i.
+            # Configs generated on 26 Nov have one extra 0 deg lead-in point first: skip it.
             sweep = phase_sweep_values(
                 cfg.get("PhaseInit", 0), cfg.get("PhaseFinal", 0), cfg.get("PhaseStep", 1)
             )

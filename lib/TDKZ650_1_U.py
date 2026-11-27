@@ -14,6 +14,19 @@ import matplotlib.pyplot as plt
 
 
 
+TDK_USB_VID = 0x2504  # TDK-Lambda (Z+ "Serial Port" CDC device)
+
+
+def find_tdk_ports(comports):
+    """Devices of the serial ports whose USB vendor ID is TDK-Lambda's."""
+    return [p.device for p in comports if getattr(p, "vid", None) == TDK_USB_VID]
+
+
+def _default_comports():
+    from serial.tools import list_ports
+    return list_ports.comports()
+
+
 class TDKZ650_1_U:
     """
     Class to manage TDK_Lambda_Z650_1_U resources.
@@ -38,6 +51,8 @@ class TDKZ650_1_U:
             print("RM tdk")
 
         self.hv_power_supply = None
+        self.address = 1  # Z+ multi-drop address (front panel), selected with INST:NSEL
+        self.comports = _default_comports
         
         print(f" === config path : {config_path}")
         
@@ -50,6 +65,7 @@ class TDKZ650_1_U:
             self.power_supply_ramp_delay = config.get('power_supply_ramp_delay', 0.1)  
             
             self.hv_power_supply_name = config['HVpowerSupply']
+            self.address = config.get('HVpowerSupplyAddress', self.address)
             self.VoltageLimit = config['VoltageLimit']
             self.CurrentLimit = config['CurrentLimit']
             self.VoltageWrite = config['VoltageWrite']
@@ -70,56 +86,54 @@ class TDKZ650_1_U:
 
     def open_hv_power_supply(self):
         """
-        Opens the HV power supply if not already open.
+        Opens the HV power supply, found automatically.
+
+        1. Every serial port with the TDK-Lambda USB vendor ID (0x2504) is tried. No text is
+           ever sent to other ports (the SPIN console and ThingSet ports are ttyACM* too).
+        2. If none answers, the configured 'HVpowerSupply' is tried.
+        A candidate is accepted only if, after 'INSTrument:NSELect <address>', it answers *IDN?
+        with "TDK-LAMBDA": a Z+ ignores every command, *IDN? included, until its address is
+        selected, and loses that selection at each power cycle.
+        Raises RuntimeError when no supply answers, rather than driving another port.
         """
         if self.hv_power_supply is not None:
             print("HV power supply is already opened.")
             return
-        
-        # Détection automatique des ports série disponibles
-        instruments = self.rm.list_resources()
 
-        if not instruments:
-                print("Alim TDK non détectée. Aucun port série disponible.")
-                return False
+        candidates = [f"ASRL{dev}::INSTR" for dev in find_tdk_ports(self.comports())]
+        if self.hv_power_supply_name and self.hv_power_supply_name not in candidates:
+            candidates.append(self.hv_power_supply_name)
 
-        for res in instruments:
-            if "ttyACM" in res or "ASRL" in res:
-                try:
-                    device = self.rm.open_resource(res, query_delay=0.5)
-                    device.read_termination = '\n'
-                    device.write_termination = '\n'
-                    device.timeout = 1500  # Timeout court pour ne pas bloquer trop longtemps
-                        
-                    idn = device.query("*IDN?")
-                    device.close()
-                    
-                    if "TDK-LAMBDA" in idn.upper():
-                        self.hv_power_supply_name = res
-                        print(f" -> Alimentation TDK trouvée sur le port : {self.hv_power_supply_name}")
-                except Exception:
-                    continue
-            
-        try:
-            self.hv_power_supply = self.rm.open_resource(self.hv_power_supply_name, query_delay=0.5)
-            # Ajout Nico - à tester
-            self.hv_power_supply.baud_rate = 9600 # 300
-##            self.hv_power_supply.write_termination = ''
-##            self.hv_power_supply.read_termination = '\r\n'
-##            self.hv_power_supply.set_visa_attribute(constants.VI_ATTR_ASRL_FLOW_CNTRL, constants.VI_ASRL_FLOW_XON_XOFF)
-##            self.hv_power_supply.stop_bits = constants.StopBits.one
-##            self.hv_power_supply.parity = constants.Parity.none
-##            self.hv_power_supply.data_bits = 8
-            self.hv_power_supply.write('INSTrument:NSELect  1')
-            print(f"Opened HV power supply => {self.hv_power_supply_name}")
-##            # Clear and flush buffer
-##            self.hv_power_supply.flush()
-##            time.sleep(0.5)
-##            self.hv_power_supply.clear()
-##            time.sleep(0.5)
-##            print('Flushed HV power supply')
-        except Exception as e:
-            print(f"Failed to open HV power supply => {self.hv_power_supply_name}: {e}")
+        tried = []
+        for res in candidates:
+            try:
+                device = self.rm.open_resource(res, query_delay=0.5)
+            except Exception as e:
+                tried.append(f"{res}: {e}")
+                continue
+            try:
+                device.read_termination = '\n'
+                device.write_termination = '\n'
+                device.timeout = 2000
+                device.baud_rate = 9600
+                device.write(f'INSTrument:NSELect {self.address}')
+                idn = device.query('*IDN?').strip()
+            except Exception as e:
+                tried.append(f"{res}: no answer ({e})")
+                device.close()
+                continue
+            if "TDK-LAMBDA" not in idn.upper():
+                tried.append(f"{res}: not a TDK-Lambda ({idn})")
+                device.close()
+                continue
+            self.hv_power_supply = device
+            self.hv_power_supply_name = res
+            print(f"Opened HV power supply => {res} ({idn})")
+            return
+
+        msg = "HV power supply not found. Tried: " + ("; ".join(tried) if tried else "no TDK-Lambda USB port and no configured port")
+        print(msg)
+        raise RuntimeError(msg)
 
     def close_hv_power_supply(self):
         """

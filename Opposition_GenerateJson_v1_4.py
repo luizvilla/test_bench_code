@@ -8,7 +8,8 @@
 # GPL v3
 # Rev Maxime Ferrand 2024-06-24 : Phi limitation between 0 and Limited_PHI in baseconfig. 
 # Rev Maxime Ferrand 2024-06-24 : Added and adapted Stephane Martin's code to generate the json files in a specific folder.
-# Rev 2026-11-26 (ticket #9): float phase (2 decimals), PhaseInit one step below first point, optional base-config path argument.
+# Rev 2026-11-26 (ticket #9): float phase (2 decimals), optional base-config path argument.
+# Rev 2026-11-27: lead-in removed, PhaseInit = first current step (one write per current).
 
 from datetime import datetime
 
@@ -26,22 +27,16 @@ PHASE_DECIMALS = 2  # phase is written as float degrees (firmware: float once ti
 def phaseSweepBounds(phases):
     """Return (PhaseInit, PhaseFinal, PhaseStep) in float degrees for one column of phase points.
 
-    The supervisor sweeps PhaseInit, PhaseInit+PhaseStep, ... up to PhaseFinal.
-    PhaseInit is set one step BELOW the first measurement point, because the OnlyScripts
-    sweep loses the first phase point (skip bug): the lead-in point absorbs it.
-    If that lead-in would be negative, PhaseInit falls back to the first point (old behaviour)
-    and a warning is printed: lower Imin or add current points.
+    The supervisor sweeps PhaseInit, PhaseInit+PhaseStep, ... up to PhaseFinal: one LEG2 write,
+    one GPIO 9 trigger, one scope frame and one DMM burst per current step. The sweep starts on
+    the first current step (no lead-in: the 26 Nov lead-in took the first scope frame and pushed
+    the last current out of the record, 27 Nov dry run).
     """
     phases = np.sort(np.asarray(phases, dtype=float))
     first, last = phases[0], phases[-1]
     step = np.mean(np.diff(phases)) if len(phases) > 1 else first
-    init = first - step
-    if init < -1e-9:
-        print(f"WARNING: lead-in phase {init:.2f} deg < 0, PhaseInit = first point {first:.2f} deg "
-              f"(its measurement may be skipped). Lower Imin or increase nbPointsI.")
-        init = first
     r = lambda x: float(np.round(x, PHASE_DECIMALS)) + 0.0  # + 0.0 turns -0.0 into 0.0
-    return r(max(init, 0.0)), r(last), r(step)
+    return r(first), r(last), r(step)
 
 
 def autoGenerateJson(Commonparameters, dest_path: str, matrix, voltageRange, frequencyList, mode: str) -> int:

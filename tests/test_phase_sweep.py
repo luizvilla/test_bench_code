@@ -41,9 +41,15 @@ class GeneratorBoundsTest(unittest.TestCase):
         from Opposition_GenerateJson_v1_4 import phaseSweepBounds
         # 7 points 0.5..3.5 A at 10 kHz, 60 V, 40 uH -> 2.4..16.8 deg
         phases = [2.4 * k for k in range(1, 8)]
-        self.assertEqual(phaseSweepBounds(phases), (0.0, 16.8, 2.4))
-        # lead-in would be negative -> fall back to first point
+        # no lead-in (27 Nov): the sweep starts on the first current step, one write per current
+        self.assertEqual(phaseSweepBounds(phases), (2.4, 16.8, 2.4))
         self.assertEqual(phaseSweepBounds([10.0, 30.0]), (10.0, 30.0, 20.0))
+
+    def test_one_write_per_current_step(self):
+        from Opposition_GenerateJson_v1_4 import phaseSweepBounds
+        # 50 kHz anchor: 0.5..3.5 A -> 12..84 deg, 7 writes, 7 scope frames
+        init, final, step = phaseSweepBounds([12.0 * k for k in range(1, 8)])
+        self.assertEqual(phase_sweep_values(init, final, step), [12.0, 24.0, 36.0, 48.0, 60.0, 72.0, 84.0])
 
 
 if __name__ == "__main__":

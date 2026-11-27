@@ -71,7 +71,7 @@
     "Vmax": 60,
     "nbPointsI": 7,
     "nbPointsV": 1,
-    "PhaseInit": 0.0,
+    "PhaseInit": 17.76,
     "PhaseFinal": 124.32,
     "PhaseStep": 17.76,
     "InitialPhaseShiftPWM": 3,
