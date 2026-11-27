@@ -64,7 +64,6 @@
     "shield_pid": 257,
     "TotalR": 0.42,
     "InductorL": 40,
-    "Sequence": 3,
     "Imin": 0.5,
     "Imax": 1.5,
     "Vmin": 40,

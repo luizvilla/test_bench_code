@@ -11,14 +11,17 @@ Everything below runs from the root of branch `session-2026-11-27`.
 3. **Check the board answers:** it enumerates as `OwnTech Technologies TWIST_V1_4_2` with two ports. `ls -l /dev/serial/by-id/` → the ThingSet one ends in `-if02`. If more than one SPIN is plugged in, put its serial in **both** base configs and the generated configs as `"shield_serial"` (or its path as `"shield_port"`); otherwise the supervisor refuses to guess.
 4. **Smoke test without HV:** `python3 -c "from lib.thingset_shield import ThingSetShield as T; s=T.open(); print(s.sendCommand('FREQUENCY','LEG1',50000), s.sendCommand('PHASE_SHIFT','LEG2',10.5))"` and look at the gate signals on the scope: 50 kHz, LEG2 lagging 0.583 µs, GPIO 9 (pin PC7) pulsing 2.1 ms after the phase write.
 5. **Scope:** channel 2 = inductor current; the configs ask for `FREQ` ch1, `AMPL` ch2 (peak-to-peak) and `RMS` ch2. The trigger input on GPIO 9 as before.
-6. **Supply:** `CurrentLimit` is 0.5 A in the configs (was 0.3 A).
+6. **Supply:** `CurrentLimit` is 0.5 A in the configs (was 0.3 A). Check it is on USB: `ls -l /dev/serial/by-id/` must list `usb-TDK-Lambda_Z+_Serial_Port_…`. If it is missing and `journalctl -k | grep "usb 3-"` shows `error -71` / `unable to enumerate USB device`, **power-cycle the supply with the USB cable plugged in** (seen on 27 Nov: re-plugging and remote mode did not help, the power cycle did). Then check it answers `*IDN?` before running the supervisor: if no port answers "TDK-LAMBDA", the supervisor falls back to `HVpowerSupply`, now the supply's fixed by-id name (`ASRL/dev/serial/by-id/usb-TDK-Lambda_Z+_Serial_Port_320B334-0005-if00::INSTR`; it was `ttyACM0`, the SPIN console). A Z+ answers `*IDN?` only after `INST:NSEL 1`, so after a power cycle the auto-detect misses it and the fallback is what finds it. If it enumerates but stays silent, select USB in the REM menu (REM → `INtF` → press voltage encoder → turn current encoder → press it).
+
+7. **Plot windows off:** run the supervisor with `MPLBACKEND=Agg` (commands below). With plot windows (Tk), the second config of a group failed to open its devices on 27 Nov; headless, 3/3 passed. The SVG plots are still saved.
+8. **Scope frames = current steps:** the scope records `nbPointsI` segmented frames (7); the legacy `"Sequence"` key is ignored. The DMMs only measure on a scope trigger, so this also sets how many current steps the DMMs record (check `FALLINGEDGES` in `resultsHigh.json`: 30 per recorded step). **Open:** frame 1 is the 0° lead-in write, so 7 frames hold lead-in + 0.5…3.0 A and miss 3.5 A (see SESSION_LOG, 27 Nov).
 
 ## 1. Anchors first: 50, 60, 70 kHz (≈ 10 min)
 
 **Command center** (second terminal, venv active, leave it running all session): `python3 tools/command_center.py --watch 10`, then open `sessions/2026-11-27/command-center.html`. One page regenerated as each config's results land: configs done/missing, the go/no-go table below, P_remaining(f) per current step with September, loss breakdown, Ipeak AMPL/2 vs phase, Vbus sag, resonance candidates, scope screenshots. Works without internet.
 
 ```bash
-python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json
+MPLBACKEND=Agg python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json
 python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/A_anchors
 ```
 
@@ -27,7 +30,7 @@ python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/A_anchors
 ## 2. Grid: 23 points 10–100 kHz (≈ 45–60 min)
 
 ```bash
-python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json
+MPLBACKEND=Agg python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json
 python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/B_grid -o sessions/2026-11-27/B_grid_breakdown.csv
 ```
 

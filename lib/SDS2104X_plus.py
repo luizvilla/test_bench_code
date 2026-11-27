@@ -75,7 +75,12 @@ class SDS2104X_plus:
                 config = json.load(f)
             
             #self.oscilloscope_name = config.get('AddressOSCILLO', self.oscilloscope_name)
-            self.Sequence = config.get('Sequence', self.Sequence)
+            # One segmented frame per current step: the frame count is nbPointsI. The legacy
+            # "Sequence" key (3 while 7 currents were swept) is ignored so it cannot drop steps.
+            self.Sequence = config.get('nbPointsI', self.Sequence)
+            if 'Sequence' in config and config['Sequence'] != self.Sequence:
+                print(f"Scope: ignoring legacy 'Sequence': {config['Sequence']}, "
+                      f"recording {self.Sequence} frames (nbPointsI)")
             self.delayOscillo = config.get('delayOscillo', self.delayOscillo)
             self.SaveEachFramePICTURE = config.get('SaveEachFramePICTURE', self.SaveEachFramePICTURE)
             self.SaveEachFrameDATA = config.get('SaveEachFrameDATA', self.SaveEachFrameDATA)

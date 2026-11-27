@@ -16,7 +16,7 @@ L = 40 µH (`InductorL`), 26 frequencies from 10 to 100 kHz. The 50/60/70 kHz an
 Both base configs are copies of the repository `base-config.json` with only these keys changed:
 `Vmin = Vmax = 60`, `nbPointsV = 1`, `Imin = 0.5`, `Imax = 3.5`, `nbPointsI = 7`, `DeadTimePWM = 300`,
 `frequencyPWM`, `ParentFolder = "sessions/2026-11-27/configs"`, `Experiment_name`.
-Instrument addresses, delays, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged. `CurrentLimit` is 0.5 A (was 0.3 A): margin for power-on, phase steps and the capacitor-resonance points, so the supply never enters CC mode and sags Vbus silently; still caps the input at 30 W. Results are written next to the configs and git-ignored (`.gitignore` here). The scope also measures `RMS` on channel 2 (inductor current) for the processing script.
+`HVpowerSupply` is the supply's fixed by-id name (27 Nov; `ttyACM0` was the SPIN console), and the legacy `Sequence` key is gone (the scope records `nbPointsI` frames). Other instrument addresses, delays, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged. `CurrentLimit` is 0.5 A (was 0.3 A): margin for power-on, phase steps and the capacitor-resonance points, so the supply never enters CC mode and sags Vbus silently; still caps the input at 30 W. Results are written next to the configs and git-ignored (`.gitignore` here). The scope also measures `RMS` on channel 2 (inductor current) for the processing script.
 
 ## Frequencies
 
@@ -38,8 +38,8 @@ The optional argument is the base-config path. Without it, the generator reads `
 ## Run order (from the repository root)
 
 ```bash
-python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json   # 1) anchors 50, 60, 70 kHz
-python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json      # 2) 10–100 kHz grid
+MPLBACKEND=Agg python3 supervisor_script.py sessions/2026-11-27/base-config_A_anchors.json   # 1) anchors 50, 60, 70 kHz
+MPLBACKEND=Agg python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json      # 2) 10–100 kHz grid
 ```
 
 * Each group is a separate experiment folder, so the anchors are guaranteed to run before the grid.
