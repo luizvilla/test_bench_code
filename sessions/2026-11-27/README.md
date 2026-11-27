@@ -16,7 +16,7 @@ L = 40 µH (`InductorL`), 26 frequencies from 10 to 100 kHz. The 50/60/70 kHz an
 Both base configs are copies of the repository `base-config.json` with only these keys changed:
 `Vmin = Vmax = 60`, `nbPointsV = 1`, `Imin = 0.5`, `Imax = 3.5`, `nbPointsI = 7`, `DeadTimePWM = 300`,
 `frequencyPWM`, `ParentFolder = "sessions/2026-11-27/configs"`, `Experiment_name`.
-`HVpowerSupply` is the supply's fixed by-id name (27 Nov; `ttyACM0` was the SPIN console), and the legacy `Sequence` key is gone (the scope records `nbPointsI` frames). Other instrument addresses, delays, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged. `CurrentLimit` is 0.5 A (was 0.3 A): margin for power-on, phase steps and the capacitor-resonance points, so the supply never enters CC mode and sags Vbus silently; still caps the input at 30 W. Results are written next to the configs and git-ignored (`.gitignore` here). The scope also measures `RMS` on channel 2 (inductor current) for the processing script.
+`HVpowerSupply` is the supply's fixed by-id name (27 Nov; `ttyACM0` was the SPIN console), and the legacy `Sequence` key is gone (the scope records `nbPointsI` frames). Other instrument addresses, delays, `VoltageLimit`, `Limited_PHI = 175` and `InitialPhaseShiftPWM = 3` are unchanged. `CurrentLimit` is 0.2 A since 27 Nov (was 0.5 A, 0.3 A before): 12 W at 60 V; the 50 kHz anchor peaks at 7.8 W (0.13 A) with 0.15 V of Vbus sag. Watch Vbus at the capacitor-resonance points: if the supply enters CC mode it sags Vbus silently. Results are written next to the configs and git-ignored (`.gitignore` here). The scope also measures `RMS` on channel 2 (inductor current) for the processing script.
 
 ## Frequencies
 

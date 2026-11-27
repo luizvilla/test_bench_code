@@ -17,7 +17,7 @@
     "frequencyPWM": 18000,
     "DeadTimePWM": 300,
     "VoltageLimit": 100,
-    "CurrentLimit": 0.5,
+    "CurrentLimit": 0.2,
     "timestep": 0.1,
     "voltage_step": 4,
     "HVpowerSupply": "ASRL/dev/serial/by-id/usb-TDK-Lambda_Z+_Serial_Port_320B334-0005-if00::INSTR",

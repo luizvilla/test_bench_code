@@ -27,7 +27,15 @@ from lib.tools import TOOL
 # -----------------------------
 # Defenitions
 # -----------------------------
-def runner(config_path):
+def parse_cli(argv):
+    """[base-config path] [--fast] -> (path, fast). --fast: no scope-1 frame screenshots and no
+    5 s plot pause; the sequence, delays and measurements are unchanged (scope 2 picture kept)."""
+    fast = "--fast" in argv
+    rest = [a for a in argv if a != "--fast"]
+    return (rest[0] if rest else "base-config.json"), fast
+
+
+def runner(config_path, fast=False):
 
     # Create a ressource manager instance to be shared among all devices
     ressource_manager = visa.ResourceManager()
@@ -51,6 +59,8 @@ def runner(config_path):
     else: 
         sds2104x_plus_high = None
     tdkz650_1_u = TDKZ650_1_U(config_path, ressource_manager=ressource_manager)
+    if fast:
+        sds2104x_plus.SaveEachFramePICTURE = 0   # scope 1: values per frame only, no bitmaps
 
     # Create Supervisor instance (loads config from specified .json file)
     sup = Supervisor(config_path,
@@ -188,10 +198,12 @@ def runner(config_path):
         plt.plot(power_data, marker='o', linestyle='none')
         plt.savefig(sup.result_output_path+'/03-Power-'+timestamp+'.svg', format='svg', dpi=300)
         
-        plt.show(block=False)
-        
-        plt.pause(5)
-        plt.close()
+        if fast:
+            plt.close('all')
+        else:
+            plt.show(block=False)
+            plt.pause(5)
+            plt.close()
 
         try:
             # Optionally read or save oscilloscope history
@@ -220,8 +232,10 @@ def runner(config_path):
 if __name__ == "__main__":
     tool = TOOL()
 
-    # Optional argument: path to a base config (default: base-config.json in the current folder)
-    base_config_path = sys.argv[1] if len(sys.argv) > 1 else "base-config.json"
+    # Optional arguments: path to a base config (default: base-config.json in the current folder), --fast
+    base_config_path, fast = parse_cli(sys.argv[1:])
+    if fast:
+        print("Accelerated mode: no scope-1 frame screenshots, no plot pause.")
     with open(base_config_path, 'r') as f:
         base_config = json.load(f)
 
@@ -242,7 +256,7 @@ if __name__ == "__main__":
     
     for jsonfile in jsonlist:
         print(jsonfile)
-        runner(jsonfile)
+        runner(jsonfile, fast=fast)
         print("Done!\n\n")
         time.sleep(2)
 
