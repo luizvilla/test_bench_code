@@ -168,11 +168,12 @@ class SDS2104X_plus:
         self.ConfigSequence(self.Sequence)
 
 
-        one_period = 1/self.frequencyPWM
-        one_period = (one_period*1.2) / 10 #10 div on screen
+        # At least 2 full switching periods on the 10 divisions (smallest 1-2-5 step that does):
+        # with ~1.2 periods FREQ/RMS came back '****' at some grid frequencies (27 Nov dry run).
+        min_tdiv = 2 * (1/self.frequencyPWM) / 10 * (1 - 1e-9)   # tolerance: 100 kHz -> exactly 2 us
 
         for i in range(0, len(self.tdiv_enum)):
-            if self.tdiv_enum[i] >= one_period:
+            if self.tdiv_enum[i] >= min_tdiv:
                 timebase = self.tdiv_enum[i]
                 break
 

@@ -52,6 +52,33 @@ class ParsePavaTest(unittest.TestCase):
         self.assertIsNone(parse_pava("C1:PAVA FREQ,****"))
 
 
+class TimebaseTest(unittest.TestCase):
+    """Scope 1 shows at least 2 switching periods (10 div), the smallest 1-2-5 step that does.
+    With ~1.2 periods FREQ came back '****' at 12, 25, 67 kHz on the 27 Nov grid dry run."""
+
+    def timebase(self, freq):
+        s = scope()
+        s.frequencyPWM = freq
+        s.oscilloscope_setup()
+        cmd = [c for c in s.oscilloscope.writes if c.startswith(":TIMebase:SCALe")][-1]
+        return float(cmd.split()[-1])
+
+    def test_at_least_two_periods_on_the_grid(self):
+        grid = [10, 11, 12, 14, 15, 16, 18, 20, 22, 25, 27, 30, 33, 37, 41, 45, 50, 55, 60, 61, 67, 70, 74, 82, 90, 100]
+        for f_khz in grid:
+            with self.subTest(f_khz=f_khz):
+                period = 1 / (f_khz * 1e3)
+                tb = self.timebase(f_khz * 1e3)
+                self.assertGreaterEqual(tb * 10, 2 * period * (1 - 1e-9))
+                smaller = [t for t in scope().tdiv_enum if t < tb]
+                self.assertLess(smaller[-1] * 10, 2 * period)   # the next step down would be too short
+
+    def test_examples(self):
+        self.assertEqual(self.timebase(50e3), 5e-6)     # 50 us on screen = 2.5 periods
+        self.assertEqual(self.timebase(12e3), 20e-6)    # 200 us = 2.4 periods (was 10 us = 1.2)
+        self.assertEqual(self.timebase(100e3), 2e-6)    # 20 us = 2 periods
+
+
 class FreeRunAfterCaptureTest(unittest.TestCase):
     """After a capture the scope goes back to AUTO (live), never left waiting in SINGLE."""
 
