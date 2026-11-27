@@ -17,8 +17,9 @@ time, so you watch the phase step happen without any reset of the screen.
 Ctrl-C at any time: phase back, legs off, IDLE.
 
 Run from the repository root, in the venv:
-  MPLBACKEND=Agg python3 tools/single_point_manual.py                 # 50 kHz, 0.5 A peak, 60 V
+  MPLBACKEND=Agg python3 tools/single_point_manual.py                 # 10 kHz, 0.5 A peak, 60 V
   MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0
+  MPLBACKEND=Agg python3 tools/single_point_manual.py --freq 50000
 """
 
 import argparse
@@ -39,6 +40,7 @@ from lib.tools import TOOL  # noqa: E402
 
 DEFAULT_BASE = os.path.join(ROOT, "sessions", "2026-11-27", "base-config_A_anchors.json")
 DEFAULT_OUT = os.path.join(ROOT, "sessions", "2026-11-27", "configs", "single_point")
+DEFAULT_FREQ = 10000
 BURST_S = 0.6      # a 30-sample burst takes 0.30-0.45 s
 SCOPE_READS = 5    # live scope readings averaged per state
 
@@ -46,6 +48,17 @@ SCOPE_READS = 5    # live scope readings averaged per state
 def phase_for(ipeak, inductor_uH, freq, vbus):
     """Phase (deg) for a peak current, same formula as Opposition_GenerateJson: dI = 2 Ipeak."""
     return round(360 * 2 * ipeak * inductor_uH * 1e-6 * freq / vbus, 2)
+
+
+def initial_phase(config_initial, phase, requested=None):
+    """Phase held before the step: the config's initial phase, but at most half the measurement
+    phase (at 10 kHz / 0.5 A the step is 2.4 deg, below the configs' 3 deg). An explicit value wins
+    but must stay below the measurement phase."""
+    if requested is not None:
+        if not 0 <= requested < phase:
+            raise ValueError(f"--initial {requested} deg must be >= 0 and below the measurement phase {phase} deg")
+        return requested
+    return min(config_initial, round(phase / 2, 2))
 
 
 def point_config(base, freq, ipeak, vbus, phase, run_dir):
@@ -108,7 +121,9 @@ def burst(dmms):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--base", default=DEFAULT_BASE, help="base config (instruments, delays, L, dead time)")
-    ap.add_argument("--freq", type=float, default=50000, help="switching frequency, Hz (default 50000)")
+    ap.add_argument("--freq", type=float, default=DEFAULT_FREQ, help=f"switching frequency, Hz (default {DEFAULT_FREQ})")
+    ap.add_argument("--initial", type=float, default=None,
+                    help="phase before the step, deg (default: config initial phase, at most half the step)")
     ap.add_argument("--ipeak", type=float, default=0.5, help="peak current, A (default 0.5)")
     ap.add_argument("--vbus", type=float, default=None, help="bus voltage you will set, V (default: base Vmax)")
     ap.add_argument("--out", default=DEFAULT_OUT, help="results folder (default: session configs/single_point)")
@@ -121,12 +136,19 @@ def main():
     phase = phase_for(args.ipeak, base["InductorL"], freq, vbus)
     if not 0 <= phase <= base.get("Limited_PHI", 175):
         sys.exit(f"phase {phase} deg out of 0..{base.get('Limited_PHI', 175)}: lower --ipeak or raise --vbus")
-    initial = base["InitialPhaseShiftPWM"]
+    try:
+        initial = initial_phase(base["InitialPhaseShiftPWM"], phase, args.initial)
+    except ValueError as e:
+        sys.exit(str(e))
+    if initial != base["InitialPhaseShiftPWM"]:
+        print(f"Initial phase {initial} deg instead of the config's {base['InitialPhaseShiftPWM']} deg "
+              f"(must stay below the {phase} deg step)")
 
     stamp = time.strftime("%Y%m%d-%H%M%S")
     run_dir = os.path.join(os.path.abspath(args.out), stamp, "PhaseShift", f"Voltage_{int(vbus)}_{freq // 1000}kHz")
     os.makedirs(run_dir)
     cfg = point_config(base, freq, args.ipeak, vbus, phase, run_dir)
+    cfg["InitialPhaseShiftPWM"] = initial
     # PhaseShift_* so loss_breakdown finds it; not PhaseShift_Voltage_* (those configs are git-tracked)
     cfg_path = os.path.join(run_dir, f"PhaseShift_SinglePoint_{int(vbus)}V_Freq{freq // 1000}kHz.json")
     json.dump(cfg, open(cfg_path, "w"), indent=4)

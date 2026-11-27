@@ -25,7 +25,8 @@ The DMMs are triggered by software for this script: one 30-reading burst **befor
 Sequence: Enter (setup, legs at 3°) → raise the supply, Enter (BEFORE burst) → Enter (phase step, DURING burst; the phase is held) → Enter (back to 3°) → lower the supply, Enter (legs off, IDLE, saved).
 
 ```bash
-MPLBACKEND=Agg python3 tools/single_point_manual.py                  # 50 kHz, 0.5 A peak, 60 V
+MPLBACKEND=Agg python3 tools/single_point_manual.py                  # 10 kHz, 0.5 A peak, 60 V (2.4 deg, from 1.2 deg)
+MPLBACKEND=Agg python3 tools/single_point_manual.py --freq 50000     # 50 kHz (12 deg, from 3 deg)
 MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0      # next point
 ```
 

@@ -35,11 +35,17 @@ def fill_results(d, f_khz, frames=7, samples=3, vbus=60.0):
             open(os.path.join(d, name), "wb").close()
 
 
+def _configs_only(folder, names):
+    """Copy the run configs only: real bench results now sit next to them (27 Nov)."""
+    return [n for n in names if os.path.isfile(os.path.join(folder, n)) and not n.startswith("PhaseShift_")]
+
+
 def make_session(root, done=None, frames=7):
     """Copy the real 27 Nov PhaseShift configs, then fill the folders listed in done {group: [f_kHz]}."""
     session = os.path.join(root, "2026-11-27")
     for group in ("A_anchors", "B_grid"):
-        shutil.copytree(os.path.join(CONFIGS, group, "PhaseShift"), os.path.join(session, "configs", group, "PhaseShift"))
+        shutil.copytree(os.path.join(CONFIGS, group, "PhaseShift"), os.path.join(session, "configs", group, "PhaseShift"),
+                        ignore=_configs_only)
     done = done if done is not None else {"A_anchors": [50, 60], "B_grid": [10, 20, 30, 41, 55, 74, 100]}
     for group, freqs in done.items():
         for f in freqs:
