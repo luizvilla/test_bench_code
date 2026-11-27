@@ -4,7 +4,7 @@
     "delay3": 0.4,
     "delay_com": 0.6,
     "delayOscillo": 0.5,
-    "dmm_init_delay": 2,
+    "dmm_init_delay": 4,
     "dmm_cmd_delay": 0.1,
     "dmm_current_nplc": 0.5,
     "dmm_voltage_nplc": 0.5,
