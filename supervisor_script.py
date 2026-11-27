@@ -202,7 +202,8 @@ def runner(config_path):
             sup.base_oscilloscope_high.oscilloscope_save_results_high()
 
             time.sleep(1)  # Wait for the oscilloscope to finish saving results
-            sup.base_oscilloscope.oscilloscope_setup_clean()
+            sup.base_oscilloscope.oscilloscope_setup_clean()   # ends in AUTO (live)
+            sup.base_oscilloscope_high.free_run()               # scope 2 live too, not left in SINGLE
 
 
         except Exception as e:

@@ -52,6 +52,23 @@ class ParsePavaTest(unittest.TestCase):
         self.assertIsNone(parse_pava("C1:PAVA FREQ,****"))
 
 
+class FreeRunAfterCaptureTest(unittest.TestCase):
+    """After a capture the scope goes back to AUTO (live), never left waiting in SINGLE."""
+
+    def test_setup_clean_leaves_auto(self):
+        s = scope()
+        s.oscilloscope_setup_clean()
+        w = s.oscilloscope.writes
+        self.assertEqual([c for c in w if "TRIG:MODE" in c.upper().replace("TRIGGER", "TRIG")][-1].split()[-1].upper(), "AUTO")
+        self.assertIn(":ACQuire:SEQuence OFF", w)
+        self.assertIn(":HISTORy OFF", w)
+
+    def test_free_run(self):
+        s = scope()
+        s.free_run()
+        self.assertEqual(s.oscilloscope.writes, [":ACQuire:SEQuence OFF", ":HISTORy OFF", ":TRIGger:MODE AUTO"])
+
+
 class OffScreenMeasureTest(unittest.TestCase):
     def test_setup_shows_no_measurement_panel(self):
         s = scope()

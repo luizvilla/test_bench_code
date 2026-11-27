@@ -6,12 +6,13 @@ it never opens the supply, so the supply stays in LOCAL and you set voltage and 
 limit yourself.
 
   1. SPIN set up as the supervisor does (legs on, duty, frequency, dead time, initial phase).
-     Scope 1 armed for 1 frame, scope 2 armed on Vbus, both DMMs armed for 1 trigger.
-  2. Pause: you raise the supply, then press Enter.
-  3. One LEG2 phase write = one trigger: scope 1 frame + 30 readings per DMM.
-     The phase then goes back to the initial value (low current).
+     Both DMMs armed for 1 trigger. Both scopes stay live (AUTO).
+  2. Pause: you raise the supply, watching the scopes, then press Enter.
+  3. Scope 1 is armed for 1 frame, then one LEG2 phase write = one trigger: scope 1 frame
+     + 30 readings per DMM. The phase goes back to the initial value (low current), the
+     frame is saved and scope 1 is live (AUTO) again.
   4. Pause: you lower the supply to 0 V, then press Enter.
-  5. Legs off, SPIN IDLE; DMM buffers, scope 1 frame and scope 2 capture saved in the
+  5. Legs off, SPIN IDLE; DMM buffers, scope 1 frame and a scope 2 screenshot saved in the
      supervisor's folder layout, so calculations/loss_breakdown.py reads them.
 Ctrl-C at any time: phase back, legs off, IDLE.
 
@@ -57,14 +58,6 @@ def point_config(base, freq, ipeak, vbus, phase, run_dir):
     return cfg
 
 
-def scope2_window(scope, seconds):
-    """Widen scope 2 so it holds a hand ramp: trigger (Vbus rising) at the left edge."""
-    tb = next((t for t in scope.tdiv_enum if t * 10 >= seconds), scope.tdiv_enum[-1])
-    scope.oscilloscope.write(f":TIMebase:SCALe {tb}")
-    scope.oscilloscope.write(f"TRDL {-tb * 5}")
-    return tb * 10
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--base", default=DEFAULT_BASE, help="base config (instruments, delays, L, dead time)")
@@ -72,8 +65,7 @@ def main():
     ap.add_argument("--ipeak", type=float, default=0.5, help="peak current, A (default 0.5)")
     ap.add_argument("--vbus", type=float, default=None, help="bus voltage you will set, V (default: base Vmax)")
     ap.add_argument("--out", default=DEFAULT_OUT, help="results folder (default: session configs/single_point)")
-    ap.add_argument("--scope2-window", type=float, default=100, help="scope 2 window, s (default 100)")
-    ap.add_argument("--no-scope2", action="store_true", help="do not use scope 2")
+    ap.add_argument("--no-scope2", action="store_true", help="no scope 2 screenshot")
     args = ap.parse_args()
 
     base = json.load(open(args.base))
@@ -139,19 +131,18 @@ def main():
             cmd("DEADTIME_COMP", "ON" if cfg["DeadTimeComp"] else "OFF")
         cmd("PHASE_SHIFT", "LEG2", initial)
 
-        # Arm after the initial phase write (its trigger must not be recorded), as the supervisor does
-        time.sleep(0.5)
-        s1.oscilloscope_setup()
+        # Scopes live while the operator ramps; DMMs armed now (they need dmm_init_delay)
+        s1.free_run()
         if s2:
-            s2.oscilloscope_high_setup()
-            window = scope2_window(s2, args.scope2_window)
-            print(f"  scope 2: {window:g} s window, starts when Vbus rises through {s2.voltage_step} V")
+            s2.free_run()
         di.dmm_setup_current_testbench()
         dv.dmm_setup_voltage_testbench()
         armed_at = time.time()
 
         input(f"\n>>> Legs are switching at {initial} deg. Raise the supply to {vbus:g} V, "
               "check Vbus, then press Enter to measure ")
+        s1.oscilloscope_setup()              # arm scope 1 for one frame (screen waits for the trigger)
+        time.sleep(1)
         wait = cfg.get("dmm_init_delay", 4) - (time.time() - armed_at)
         if wait > 0:
             print(f"  waiting {wait:.1f} s more for the DMMs to be ready")
@@ -159,9 +150,11 @@ def main():
 
         cmd("PHASE_SHIFT", "LEG2", phase, delay=cfg.get("delay_com", 0.6))
         time.sleep(0.4)                     # a 30-sample burst takes 0.30-0.45 s
-        measured = True
         cmd("PHASE_SHIFT", "LEG2", initial)  # back to low current right away
-        print("  measured.")
+        s1.oscilloscope_save_results()       # read the frame before the scope goes live again
+        s1.oscilloscope_setup_clean()        # scope 1 live (AUTO)
+        measured = True
+        print("  measured, scope 1 live again.")
 
         input(f"\n>>> Lower the supply to 0 V, then press Enter ")
     except KeyboardInterrupt:
@@ -177,11 +170,11 @@ def main():
 
     try:
         if measured:
-            save(cfg, run_dir, s1, s2, di, dv, args.scope2_window)
+            save(run_dir, s2, di, dv)
         else:
             print("No measurement taken: nothing saved.")
     finally:
-        for f in (lambda: s1.oscilloscope_setup_clean(), s1.close_oscilloscope,
+        for f in (lambda: s1.oscilloscope_setup_clean(), (s2.free_run if s2 else None), s1.close_oscilloscope,
                   (s2.close_oscilloscope if s2 else None), di.close_dmm_for_current, dv.close_dmm_for_voltage):
             if f:
                 try:
@@ -190,25 +183,14 @@ def main():
                     pass
 
 
-def save(cfg, run_dir, s1, s2, di, dv, window):
+def save(run_dir, s2, di, dv):
     tool = TOOL()
     v = dv.dmm_get_buffer(dv.dmm_for_voltage, wait_meas_complete=False)
     i = di.dmm_get_buffer(di.dmm_for_current, wait_meas_complete=False)
     tool.export_result_to_csv(str(v), "Voltage", run_dir)
     tool.export_result_to_csv(str(i), "Current", run_dir)
-    s1.oscilloscope_save_results()
-
     if s2:
-        status = s2.oscilloscope.query(":TRIGger:STATus?").strip()
-        if status.lower().startswith("ready") or status.lower().startswith("arm"):
-            print(f"  scope 2 never triggered (Vbus did not cross {s2.voltage_step} V): saving its screen as is")
-        else:
-            t0 = time.time()
-            while not status.lower().startswith("stop") and time.time() - t0 < window + 5:
-                print(f"  scope 2 still recording ({status}), {window + 5 - (time.time() - t0):.0f} s max ...")
-                time.sleep(5)
-                status = s2.oscilloscope.query(":TRIGger:STATus?").strip()
-        s2.oscilloscope_save_results_high()
+        s2.oscilloscope_save_picture("SinglePoint_High")   # live screen of scope 2, for the record
 
     mean = lambda xs: sum(xs) / len(xs) if xs else float("nan")
     res = json.load(open(os.path.join(run_dir, "results.json")))

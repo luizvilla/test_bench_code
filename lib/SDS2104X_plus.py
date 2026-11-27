@@ -291,7 +291,6 @@ class SDS2104X_plus:
 
         self.oscilloscope.write(':TRIGger:EDGE:LEVel  10.00E-01') #Trigger Level 1V
         #self.oscilloscope.write(':TRIGger:EDGE:LEVel  4.00E+00') #Trigger Level 4V
-        self.oscilloscope.write('TRIG:MODE  SINGle') # Single
 
         #Disable measurements and segmented memory 
         self.oscilloscope.write(':MEASure OFF')
@@ -302,6 +301,15 @@ class SDS2104X_plus:
         self.oscilloscope.write(f':TIMebase:SCALe  2e-6') # 2µs / div
 
         self.oscilloscope.write(f'TRDL 0') #Trigger Delay
+
+        # Leave the scope live (AUTO) for the operator, not waiting in SINGLE
+        self.free_run()
+
+    def free_run(self):
+        """Segmented memory and history off, trigger AUTO: the screen runs live."""
+        self.oscilloscope.write(':ACQuire:SEQuence OFF')
+        self.oscilloscope.write(':HISTORy OFF')
+        self.oscilloscope.write(':TRIGger:MODE AUTO')
 
 
     def oscilloscope_setup_measure_high(self):
