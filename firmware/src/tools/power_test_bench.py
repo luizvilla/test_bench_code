@@ -153,9 +153,12 @@ class PowerTestBench:
                 raise PowerTestBenchError(
                     f"{path}/{name} is missing from the firmware readback"
                 )
-            if not self._values_match(
-                readback[name], requested, absolute_tolerance
-            ):
+            tolerance = (
+                absolute_tolerance.get(name, 0.0)
+                if isinstance(absolute_tolerance, dict)
+                else absolute_tolerance
+            )
+            if not self._values_match(readback[name], requested, tolerance):
                 raise PowerTestBenchError(
                     f"{path}/{name} read back as {readback[name]!r}, "
                     f"requested {requested!r}"
@@ -198,6 +201,18 @@ class PowerTestBench:
         self._write_and_verify("Config", {"Frequency_Hz": frequency_hz})
         return frequency_hz
 
+    def set_dead_time_compensation(self, enabled):
+        """Turn the bench dead-time duty compensation on or off.
+
+        Bench firmware only (``Config/wDeadTimeComp``). When on, each leg's
+        open-loop duty becomes ``D - td*f/2``, with ``td`` the mean of the
+        leg's rising and falling dead times and ``f`` the live frequency.
+        """
+
+        enabled = self._validate_bool("enabled", enabled)
+        self._write_and_verify("Config", {"wDeadTimeComp": enabled})
+        return enabled
+
     def configure_leg(
         self,
         leg,
@@ -211,10 +226,16 @@ class PowerTestBench:
         reference_value=None,
         tracking_var=None,
         phase_shift=None,
+        phase_shift_deg=None,
         dead_time_rising_ns=None,
         dead_time_falling_ns=None,
     ):
-        """Validate, write, and verify one leg's supplied settings."""
+        """Validate, write, and verify one leg's supplied settings.
+
+        ``phase_shift`` writes whole degrees (``wPhaseShift``);
+        ``phase_shift_deg`` writes fractional degrees, 0 to 360
+        (``wPhaseShift_deg``, bench firmware only). Pass one or the other.
+        """
 
         leg_number = self._normalize_leg(leg)
         values = {}
@@ -256,6 +277,16 @@ class PowerTestBench:
                 "phase_shift", phase_shift, -360, 360
             )
 
+        if phase_shift_deg is not None:
+            if phase_shift is not None:
+                raise ValueError(
+                    "pass phase_shift or phase_shift_deg, not both"
+                )
+            phase = self._validate_finite("phase_shift_deg", phase_shift_deg)
+            if phase < 0.0 or phase > 360.0:
+                raise ValueError("phase_shift_deg must be between 0 and 360")
+            values["wPhaseShift_deg"] = phase
+
         if dead_time_rising_ns is not None:
             values["wDeadTimeRising_ns"] = self._validate_integer(
                 "dead_time_rising_ns", dead_time_rising_ns, 0, 65535
@@ -268,8 +299,16 @@ class PowerTestBench:
         if not values:
             raise ValueError("at least one leg setting must be supplied")
 
+        # The firmware prints floats with 3 decimals; wPhaseShift_deg is also
+        # stored as a 32-bit float, so up to 360 it needs a little more slack.
         return self._write_and_verify(
-            f"Config/Leg{leg_number}", values, absolute_tolerance=5e-4
+            f"Config/Leg{leg_number}",
+            values,
+            absolute_tolerance={
+                "wDutyCycle": 5e-4,
+                "wReferenceValue": 5e-4,
+                "wPhaseShift_deg": 6e-3,
+            },
         )
 
     def read_leg(self, leg):

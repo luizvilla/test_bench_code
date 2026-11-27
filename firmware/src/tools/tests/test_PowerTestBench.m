@@ -50,6 +50,50 @@ classdef test_PowerTestBench < matlab.unittest.TestCase
                 "PowerTestBench:validation");
         end
 
+        function fractionalPhaseIsWrittenAndValidated(testCase)
+            result = testCase.Bench.configureLeg( ...
+                2, struct("phaseShiftDeg", 179.82));
+            testCase.verifyEqual(result.wPhaseShift_deg, 179.82, ...
+                "AbsTol", 1e-9);
+
+            testCase.Client.setRestoreValue( ...
+                "Config/Leg1", "wPhaseShift_deg", 359.995);
+            testCase.Bench.configureLeg(1, struct("phaseShiftDeg", 359.9999));
+
+            invalid = {
+                struct("phaseShiftDeg", -0.1)
+                struct("phaseShiftDeg", 360.1)
+                struct("phaseShiftDeg", NaN)
+                struct("phaseShift", 90, "phaseShiftDeg", 90.5)
+            };
+            for i = 1:numel(invalid)
+                testCase.verifyError( ...
+                    @() testCase.Bench.configureLeg(1, invalid{i}), ...
+                    "PowerTestBench:validation");
+            end
+
+            testCase.Client.setRestoreValue( ...
+                "Config/Leg1", "wPhaseShift_deg", 0.0);
+            testCase.verifyError( ...
+                @() testCase.Bench.configureLeg( ...
+                    1, struct("phaseShiftDeg", 45.5)), ...
+                "PowerTestBench:readback");
+        end
+
+        function deadTimeCompensationToggle(testCase)
+            testCase.verifyTrue( ...
+                testCase.Bench.setDeadTimeCompensation(true));
+            config = testCase.Client.getState("Config");
+            testCase.verifyTrue(config.wDeadTimeComp);
+            testCase.verifyFalse( ...
+                testCase.Bench.setDeadTimeCompensation(false));
+            config = testCase.Client.getState("Config");
+            testCase.verifyFalse(config.wDeadTimeComp);
+            testCase.verifyError( ...
+                @() testCase.Bench.setDeadTimeCompensation(1), ...
+                "PowerTestBench:validation");
+        end
+
         function restoredFirmwareValueRaisesReadbackError(testCase)
             testCase.Client.setRestoreValue( ...
                 "Config/Leg1", "wDutyCycle", 0.1);

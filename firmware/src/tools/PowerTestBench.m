@@ -61,12 +61,26 @@ classdef PowerTestBench < handle
                 "Config", struct("Frequency_Hz", frequencyHz));
         end
 
+        function enabled = setDeadTimeCompensation(obj, enabled)
+            % Turn the bench dead-time duty compensation on or off.
+            %
+            % Bench firmware only (Config/wDeadTimeComp). When on, each
+            % leg's open-loop duty becomes D - td*f/2, with td the mean of
+            % the leg's rising and falling dead times and f the frequency.
+            enabled = PowerTestBench.validateLogical("enabled", enabled);
+            obj.writeAndVerify( ...
+                "Config", struct("wDeadTimeComp", enabled));
+        end
+
         function readback = configureLeg(obj, leg, settings)
             % Configure a leg from a scalar settings struct.
             %
             % Supported fields: enable, capacitor, driver, buck, boost,
             % dutyCycle, referenceValue, trackingVar, phaseShift,
-            % deadTimeRisingNs, and deadTimeFallingNs.
+            % phaseShiftDeg, deadTimeRisingNs, and deadTimeFallingNs.
+            % phaseShift writes whole degrees (wPhaseShift); phaseShiftDeg
+            % writes fractional degrees, 0 to 360 (wPhaseShift_deg, bench
+            % firmware only). Pass one or the other.
             arguments
                 obj
                 leg
@@ -77,7 +91,8 @@ classdef PowerTestBench < handle
             allowed = [ ...
                 "enable", "capacitor", "driver", "buck", "boost", ...
                 "dutyCycle", "referenceValue", "trackingVar", ...
-                "phaseShift", "deadTimeRisingNs", "deadTimeFallingNs"];
+                "phaseShift", "phaseShiftDeg", ...
+                "deadTimeRisingNs", "deadTimeFallingNs"];
             PowerTestBench.rejectUnknownFields(settings, allowed, "leg setting");
 
             values = struct();
@@ -130,6 +145,19 @@ classdef PowerTestBench < handle
                 values.wPhaseShift = PowerTestBench.validateInteger( ...
                     "phaseShift", settings.phaseShift, -360, 360);
             end
+            if isfield(settings, "phaseShiftDeg")
+                if isfield(settings, "phaseShift")
+                    error("PowerTestBench:validation", ...
+                        "pass phaseShift or phaseShiftDeg, not both");
+                end
+                phase = PowerTestBench.validateFinite( ...
+                    "phaseShiftDeg", settings.phaseShiftDeg);
+                if phase < 0 || phase > 360
+                    error("PowerTestBench:validation", ...
+                        "phaseShiftDeg must be between 0 and 360");
+                end
+                values.wPhaseShift_deg = phase;
+            end
             if isfield(settings, "deadTimeRisingNs")
                 values.wDeadTimeRising_ns = PowerTestBench.validateInteger( ...
                     "deadTimeRisingNs", settings.deadTimeRisingNs, 0, 65535);
@@ -144,7 +172,11 @@ classdef PowerTestBench < handle
                     "at least one leg setting must be supplied");
             end
             path = "Config/Leg" + legNumber;
-            readback = obj.writeAndVerify(path, values, 5e-4);
+            % The firmware prints floats with 3 decimals; wPhaseShift_deg is
+            % also stored as a 32-bit float, so it needs a little more slack.
+            tolerance = struct("wDutyCycle", 5e-4, ...
+                "wReferenceValue", 5e-4, "wPhaseShift_deg", 6e-3);
+            readback = obj.writeAndVerify(path, values, tolerance);
         end
 
         function value = readLeg(obj, leg)
@@ -630,8 +662,17 @@ classdef PowerTestBench < handle
                         "%s/%s is missing from the firmware readback", ...
                         path, name);
                 end
+                if isstruct(absoluteTolerance)
+                    if isfield(absoluteTolerance, name)
+                        tolerance = absoluteTolerance.(name);
+                    else
+                        tolerance = 0;
+                    end
+                else
+                    tolerance = absoluteTolerance;
+                end
                 if ~PowerTestBench.valuesMatch( ...
-                        readback.(name), expected.(name), absoluteTolerance)
+                        readback.(name), expected.(name), tolerance)
                     error("PowerTestBench:readback", ...
                         "%s/%s readback does not match the requested value", ...
                         path, name);

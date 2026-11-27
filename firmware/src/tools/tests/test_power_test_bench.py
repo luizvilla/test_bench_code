@@ -37,12 +37,17 @@ class FakeThingSetClient:
             "wReferenceValue": 0.0,
             "wTrackingVar": "V1",
             "wPhaseShift": 0,
+            "wPhaseShift_deg": 0.0,
             "wDeadTimeRising_ns": 100,
             "wDeadTimeFalling_ns": 100,
         }
         calibration = {"wGain": 1.0, "wOffset": 0.0, "wStore": False}
         self.state = {
-            "Config": {"Mode": 0, "Frequency_Hz": 200000},
+            "Config": {
+                "Mode": 0,
+                "Frequency_Hz": 200000,
+                "wDeadTimeComp": False,
+            },
             "Config/Leg1": copy.deepcopy(leg),
             "Config/Leg2": copy.deepcopy(leg),
             "Measurements": {"rV1Low_V": 12.0, "rDuty1": 0.25},
@@ -156,6 +161,44 @@ class PowerTestBenchTests(unittest.TestCase):
         self.assertTrue(result["wBoost"])
         self.assertFalse(result["wBuck"])
         self.assertEqual(result["wTrackingVar"], "VH")
+
+    def test_fractional_phase_is_written_and_verified(self):
+        result = self.bench.configure_leg(2, phase_shift_deg=179.82)
+        self.assertAlmostEqual(result["wPhaseShift_deg"], 179.82)
+        self.assertEqual(
+            self.client.operations[0],
+            ("write", "Config/Leg2", {"wPhaseShift_deg": 179.82}),
+        )
+
+    def test_fractional_phase_accepts_three_decimal_float32_readback(self):
+        self.client.restore_values[("Config/Leg1", "wPhaseShift_deg")] = 359.995
+        self.bench.configure_leg(1, phase_shift_deg=359.9999)
+
+    def test_fractional_phase_validation(self):
+        invalid_calls = (
+            lambda: self.bench.configure_leg(1, phase_shift_deg=-0.1),
+            lambda: self.bench.configure_leg(1, phase_shift_deg=360.1),
+            lambda: self.bench.configure_leg(1, phase_shift_deg=float("nan")),
+            lambda: self.bench.configure_leg(
+                1, phase_shift=90, phase_shift_deg=90.5
+            ),
+        )
+        for call in invalid_calls:
+            with self.subTest(call=call), self.assertRaises(ValueError):
+                call()
+
+    def test_fractional_phase_refused_by_firmware_raises(self):
+        self.client.restore_values[("Config/Leg1", "wPhaseShift_deg")] = 0.0
+        with self.assertRaisesRegex(PowerTestBenchError, "read back"):
+            self.bench.configure_leg(1, phase_shift_deg=45.5)
+
+    def test_dead_time_compensation_toggle(self):
+        self.assertTrue(self.bench.set_dead_time_compensation(True))
+        self.assertTrue(self.client.state["Config"]["wDeadTimeComp"])
+        self.assertFalse(self.bench.set_dead_time_compensation(False))
+        self.assertFalse(self.client.state["Config"]["wDeadTimeComp"])
+        with self.assertRaises(ValueError):
+            self.bench.set_dead_time_compensation(1)
 
     def test_validation_rejects_unsafe_or_ambiguous_leg_values(self):
         invalid_calls = (

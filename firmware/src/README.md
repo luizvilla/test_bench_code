@@ -551,7 +551,7 @@ matlab -batch "addpath('src/tools','src/tools/tests'); \
 results=runtests('src/tools/tests'); assertSuccess(results);"
 ```
 
-The current offline gate is 23 Python tests and 19 MATLAB tests. Scope coverage
+The current offline gate is 28 Python tests and 21 MATLAB tests. Scope coverage
 includes decimations 1, 10, and 100; booleans, non-integers, bounds, NaN, and
 infinity; valid and wrapped records; truncated, malformed, non-hexadecimal,
 wrong-count, wrong-channel, timeout, and probe-mismatch inputs; readback

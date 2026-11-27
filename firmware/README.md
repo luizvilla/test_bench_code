@@ -1,5 +1,7 @@
 # Bench firmware (SPIN on the Twist 1.4.2), ThingSet
 
+New to it? Start with [GETTING_STARTED.md](GETTING_STARTED.md) (flash, connect, Python example).
+
 The SPIN firmware of the opposition test bench, spoken to by the supervisor over **ThingSet** (`lib/thingset_shield.py`, `"shield_protocol": "thingset"` in the configs). It replaces the string-protocol firmware (`owntech/` on `ReleaseCandidate`, comm protocol `python_twist_comm_protocol#power_tuesday`).
 
 | | |
