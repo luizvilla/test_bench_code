@@ -17,6 +17,16 @@ import matplotlib.pyplot as plt
 
 
 
+def parse_pava(response: str):
+    """'C2:PAVA AMPL,1.33E-01A' -> 0.133; '****' (no measurement) -> None."""
+    import re
+    value = response.strip().split(",")[-1]
+    if "*" in value:
+        return None
+    m = re.match(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", value)
+    return float(m.group(0)) if m else None
+
+
 class SDS2104X_plus:
     """
     Class to manage SDS2104X_plus resources.
@@ -152,10 +162,10 @@ class SDS2104X_plus:
         if self.oscilloscope is None:
             raise ValueError("Oscilloscope is not opened.")
         self.ConfigTrigger()
-        self.ConfigMeasure()
+        # No measurement panel on screen (it hid the waveforms): each frame is measured
+        # off screen with Cn:PAVA? in oscilloscope_save_results.
+        self.oscilloscope.write(':MEASure OFF')
         self.ConfigSequence(self.Sequence)
-        for i, measureParam in enumerate(self.scopeMeasure):
-            self.NewMeasure(i+1, measureParam)
 
 
         one_period = 1/self.frequencyPWM
@@ -388,7 +398,7 @@ class SDS2104X_plus:
             for i, measureParam in enumerate(self.scopeMeasure):
                 frame_meas.update({f'{i+1}': {'type': measureParam.get('type'),
                                               'channel': measureParam.get('channel'),
-                                              'value': self.GetMeasure(i + 1)}})
+                                              'value': self.GetParam(measureParam.get('channel'), measureParam.get('type'))}})
             print(frame_meas)
             meas_results.update({frame_name: frame_meas})
 
@@ -468,6 +478,12 @@ class SDS2104X_plus:
         self.oscilloscope.write(f':MEASure:ADVanced:P{num}:TYPE {type}')
         print(f"Add Measure {num} on Ch{source} : {type}")
 
+
+    def GetParam(self, channel: int, type: str):
+        """Off-screen measurement of the current (history) frame: Cn:PAVA? <type>."""
+        val = parse_pava(self.oscilloscope.query(f'C{channel}:PAVA? {type}'))
+        print(f'Get C{channel} {type}: {val}')
+        return val
 
     def GetMeasure(self, num: int):
         if not 'ON' in self.oscilloscope.query(f':MEASure:ADVanced:P{num}?'):
