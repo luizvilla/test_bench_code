@@ -17,6 +17,11 @@ class OffsetSweepTest(unittest.TestCase):
     def test_fit_zero_ignores_missing(self):
         self.assertEqual(os_.fit_zero([0, 1], [None, 2.0]), (None, None, None))
 
+    def test_scope_scale_holds_peak_plus_offset(self):
+        # 3.5 A + the 0.005 sweep's offset (86 A/duty * 0.0025 = 0.215 A) + margin
+        self.assertGreater(os_.scope_imax(3.5, 0.005), 3.5 + 0.215)
+        self.assertLess(os_.scope_imax(0.5, 0.005), 1.5)
+
     def test_phase(self):
         self.assertEqual(os_.phase_for(2.0, 40, 50000, 60), 48.0)
         self.assertEqual(os_.phase_for(2.0, 40, 100000, 60), 96.0)
