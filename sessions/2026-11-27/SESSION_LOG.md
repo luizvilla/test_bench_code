@@ -22,11 +22,11 @@ Operating point: 60 V · 3.5 A peak (0.5–3.5 A, 7 points) · 300 ns dead time 
 
 Verdict (GO / NO-GO) and why:
 
-## Grid (23 points)
+## Grid (10 points)
 
 | | |
 |---|---|
-| Folders complete | /23 |
+| Folders complete | /10 |
 | Missing or failed points, and why | |
 | Candidate capacitor-resonance frequencies (log only, excluded in #13) | |
 | Fit of P_remaining(f) | |
@@ -89,6 +89,7 @@ Verdict (GO / NO-GO) and why:
 - 14:55: **differential duty trim** `DutyTrimDiff` (D1 − D2, split around DutyPWM; `lib/duty_trim.py`), used by the supervisor and `single_point_manual`; −0.0004 in both base configs, B_grid regenerated (only this key); **A_anchors configs kept as run (no trim)**: its results and `base-config-original.json` are there. Bench check at 3.5 A (data `configs/offset_sweep/20261127-145502/`): **50 kHz −0.05 → 0.00 A** (cancelled), **100 kHz −0.03 → +0.05 A** (overshoot): 0.0002 per leg is 2 ns at 100 kHz, below one timer tick (2.9 ns), rounded to a full tick (Δ ≈ −0.0006); best there −0.00015. Offset without trim varies run to run (50 kHz: −0.12 A at 14:42, −0.05 A now). To decide: trim only at low f, or not at all.
 - 15:00: **trim only up to `DutyTrimMaxFreq` = 60 kHz** (no trim above: timer tick). B_grid regenerated (only this key). **10 kHz test** (data `configs/offset_sweep/20261127-145949/` and `-150330/`): 0.5 A offset −0.005 A (negligible); 3.5 A offset −0.25 / −0.15 / −0.085 A without trim (drifts within minutes), **−0.015 / −0.020 A with −0.0004**: trim kept for ≤ 60 kHz (10 kHz and 50 kHz cancelled, 100 kHz excluded).
 - **Low-frequency Ipeak:** at 10 kHz / 3.5 A the scope gives 5.7 A pp (Ipeak ≈ 2.85 A, not 3.5 A): L/R = 40 µH / 0.42 Ω ≈ 95 µs ≈ one period, the ramp is no longer linear and the phase formula overestimates Ipeak by ~20 %. For the low grid points trust AMPL/2, not `--ipeak phase`.
+- 15:1x: **grid reduced to 10 points: 10, 20, …, 100 kHz** (Luiz). B_grid regenerated (10 configs, trim −0.0004 up to 60 kHz); 50/60/70 kHz also in the grid (with trim) next to the anchors (without). README, run sheet, bench skill and command-center tests updated.
 - Note for the supervisor: `TDKZ650_1_U.open_hv_power_supply` sends `*IDN?` to every ttyACM port and, if none answers "TDK-LAMBDA", falls back to the config address `ASRL/dev/ttyACM0`, which is now the SPIN console. Do not start a run until the supply answers `*IDN?`.
 
 ## Answers from Nicolas

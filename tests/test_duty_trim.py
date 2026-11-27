@@ -81,8 +81,8 @@ class SupervisorTrimTest(unittest.TestCase):
 
     def test_grid_configs_carry_the_trim(self):
         # B_grid regenerated with the trim; A_anchors kept as run (no trim) since its results exist
-        grid = os.path.join(ROOT, "sessions/2026-11-27/configs/B_grid/PhaseShift/Voltage_60_55kHz/"
-                                  "PhaseShift_Voltage_60V_Freq55kHz.json")
+        grid = os.path.join(ROOT, "sessions/2026-11-27/configs/B_grid/PhaseShift/Voltage_60_50kHz/"
+                                  "PhaseShift_Voltage_60V_Freq50kHz.json")
         cfg = json.load(open(grid))
         self.assertAlmostEqual(cfg["DutyTrimDiff"], -0.0004)
         self.assertEqual(cfg["DutyTrimMaxFreq"], 60000)

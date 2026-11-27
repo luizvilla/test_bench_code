@@ -46,7 +46,7 @@ def make_session(root, done=None, frames=7):
     for group in ("A_anchors", "B_grid"):
         shutil.copytree(os.path.join(CONFIGS, group, "PhaseShift"), os.path.join(session, "configs", group, "PhaseShift"),
                         ignore=_configs_only)
-    done = done if done is not None else {"A_anchors": [50, 60], "B_grid": [10, 20, 30, 41, 55, 74, 100]}
+    done = done if done is not None else {"A_anchors": [50, 60], "B_grid": [10, 20, 30, 40, 60, 80, 100]}
     for group, freqs in done.items():
         for f in freqs:
             fill_results(os.path.join(session, "configs", group, "PhaseShift", f"Voltage_60_{f}kHz"), f, frames)
@@ -61,7 +61,7 @@ def session(tmp_path):
 def test_folder_status_counts_done_and_not_run(session):
     data = cc.build_data(session, os.path.join(session, "command-center.html"))
     status = {g: {f["f_kHz"]: f["status"] for f in fs} for g, fs in data["groups"].items()}
-    assert len(status["A_anchors"]) == 3 and len(status["B_grid"]) == 23
+    assert len(status["A_anchors"]) == 3 and len(status["B_grid"]) == 10
     assert status["A_anchors"] == {50: "done", 60: "done", 70: "not run"}
     assert sum(s == "done" for s in status["B_grid"].values()) == 7
 
@@ -112,13 +112,13 @@ def test_nothing_run_yet_still_writes_a_page(tmp_path):
 
 
 def test_resonance_bump_is_flagged_at_its_frequency_only(tmp_path):
-    session = make_session(str(tmp_path), {"B_grid": [10, 14, 20, 25, 30, 41, 55, 74, 100]})
-    d = os.path.join(session, "configs", "B_grid", "PhaseShift", "Voltage_60_25kHz")
+    session = make_session(str(tmp_path), {"B_grid": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]})
+    d = os.path.join(session, "configs", "B_grid", "PhaseShift", "Voltage_60_30kHz")
     path = os.path.join(d, "csv-10_00_00-27_11_2026-Current.csv")
     with open(path) as fh:
         i_dc = json.load(fh)
     with open(path, "w") as fh:
-        json.dump([i + 0.6 / 60.0 for i in i_dc], fh)  # +0.6 W at 25 kHz
+        json.dump([i + 0.6 / 60.0 for i in i_dc], fh)  # +0.6 W at 30 kHz
     data = cc.build_data(session, os.path.join(session, "command-center.html"))
     flagged = {(p["f_kHz"], p["step"]) for p in data["points"] if p["resonance_candidate"]}
-    assert flagged == {(25.0, s) for s in range(1, 8)}
+    assert flagged == {(30.0, s) for s in range(1, 8)}

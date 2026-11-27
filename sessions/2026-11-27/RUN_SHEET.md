@@ -46,13 +46,14 @@ python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/A_anchors
 
 **Check before going on:** P_remaining(f) of the anchors against September (17.43 mW/kHz · f + 3.22 W, R² 0.999). Ipeak is read as AMPL/2; `--ipeak phase` is the cross-check. If they disagree by more than the scatter of September, stop and look (inductor value, probe scaling, scope measurement) before spending the session on the grid.
 
-## 2. Grid: 23 points 10–100 kHz (≈ 45–60 min)
+## 2. Grid: 10 points, 10–100 kHz in 10 kHz steps (≈ 11 min with `--fast`, 16 min without)
 
 ```bash
 MPLBACKEND=Agg python3 supervisor_script.py sessions/2026-11-27/base-config_B_grid.json --fast
 python3 calculations/loss_breakdown.py sessions/2026-11-27/configs/B_grid -o sessions/2026-11-27/B_grid_breakdown.csv
 ```
 
+- Duty trim −0.0004 up to 60 kHz (`DutyTrimMaxFreq`), none above. At 10–20 kHz Ipeak from the phase is ~20 % high (L/R ≈ one period): trust AMPL/2.
 - Points below 30 kHz have small phases (2.4–45°): fine with this firmware (±0.05°), flagged in the README table.
 - Watch for the **capacitor resonance** (electrolytic, 125 mΩ ESR): note the frequencies where the waveforms or P_remaining jump; they are excluded later, not now.
 
