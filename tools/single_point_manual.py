@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """One operating point, with the HV supply driven by hand from its front panel.
 
-The script does everything the supervisor does for one current step, except the supply:
-it never opens the supply, so the supply stays in LOCAL and you set voltage and current
-limit yourself.
+The script never opens the supply: it stays in LOCAL and you set voltage and current limit.
+Every step waits for Enter, and scope 1 stays live (AUTO, triggered on the gate C1) the whole
+time, so you watch the phase step happen without any reset of the screen.
 
   1. SPIN set up as the supervisor does (legs on, duty, frequency, dead time, initial phase).
-     Both DMMs armed for 1 trigger. Both scopes stay live (AUTO).
-  2. Pause: you raise the supply, watching the scopes, then press Enter.
-  3. Scope 1 is armed for 1 frame, then one LEG2 phase write = one trigger: scope 1 frame
-     + 30 readings per DMM. The phase goes back to the initial value (low current), the
-     frame is saved and scope 1 is live (AUTO) again.
-  4. Pause: you lower the supply to 0 V, then press Enter.
-  5. Legs off, SPIN IDLE; DMM buffers, scope 1 frame and a scope 2 screenshot saved in the
-     supervisor's folder layout, so calculations/loss_breakdown.py reads them.
+     DMMs armed on a software trigger (2 bursts of 30 readings). Scopes live.
+  2. You raise the supply, then Enter.
+  3. BEFORE: one DMM burst + live scope reading at the initial phase.
+  4. Enter: phase step to the asked Ipeak. DURING: one DMM burst + live scope readings.
+     The phase is held until you press Enter.
+  5. Enter: phase back to the initial value. You lower the supply, then Enter.
+  6. Legs off, SPIN IDLE. Saved in the supervisor's folder layout (the DURING burst and
+     scope values are what calculations/loss_breakdown.py reads; BEFORE is saved beside).
 Ctrl-C at any time: phase back, legs off, IDLE.
 
 Run from the repository root, in the venv:
   MPLBACKEND=Agg python3 tools/single_point_manual.py                 # 50 kHz, 0.5 A peak, 60 V
-  MPLBACKEND=Agg python3 tools/single_point_manual.py --freq 50000 --ipeak 1.0
+  MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0
 """
 
 import argparse
@@ -33,12 +33,14 @@ sys.path.insert(0, ROOT)
 import pyvisa as visa  # noqa: E402
 
 from lib.SDM3065X import SDM3065X  # noqa: E402
-from lib.SDS2104X_plus import SDS2104X_plus  # noqa: E402
+from lib.SDS2104X_plus import SDS2104X_plus, parse_pava  # noqa: E402
 from lib.thingset_shield import ThingSetShield  # noqa: E402
 from lib.tools import TOOL  # noqa: E402
 
 DEFAULT_BASE = os.path.join(ROOT, "sessions", "2026-11-27", "base-config_A_anchors.json")
 DEFAULT_OUT = os.path.join(ROOT, "sessions", "2026-11-27", "configs", "single_point")
+BURST_S = 0.6      # a 30-sample burst takes 0.30-0.45 s
+SCOPE_READS = 5    # live scope readings averaged per state
 
 
 def phase_for(ipeak, inductor_uH, freq, vbus):
@@ -56,6 +58,51 @@ def point_config(base, freq, ipeak, vbus, phase, run_dir):
     )
     cfg.pop("Sequence", None)
     return cfg
+
+
+def live_view(scope, measures):
+    """Scope 1 live: supervisor channel scales and >= 2-period timebase, trigger AUTO on the gate
+    (C1 rising) so the waveform is stable and never frozen, and the measurements of the config
+    shown on screen without statistics."""
+    scope.oscilloscope_setup()          # scales, timebase (arms segmented memory...)
+    scope.free_run()                    # ...which free_run undoes: sequence off, AUTO
+    o = scope.oscilloscope
+    o.write(":TRIGger:EDGE:SOURce C1")
+    o.write(":TRIGger:EDGE:LEVel 1.0")
+    o.write(":TRIGger:MODE AUTO")
+    scope.ConfigMeasure()               # panel on, advanced mode
+    for i, m in enumerate(measures):
+        scope.NewMeasure(i + 1, m)
+    o.write(":MEASure:ADVanced:STATistics OFF")
+
+
+def read_scope(scope, measures, n=SCOPE_READS):
+    """Average of n live readings per measure (None if the scope never had a value)."""
+    out = {}
+    for i, m in enumerate(measures):
+        vals = []
+        for _ in range(n):
+            v = parse_pava(scope.oscilloscope.query(f"C{m['channel']}:PAVA? {m['type']}"))
+            if v is not None:
+                vals.append(v)
+            time.sleep(0.1)
+        out[str(i + 1)] = {"type": m["type"], "channel": m["channel"],
+                           "value": sum(vals) / len(vals) if vals else None}
+    return out
+
+
+def dmm_arm_software(dmm, bursts):
+    """Same setup as the testbench (range, NPLC, 30 samples), but triggered by *TRG."""
+    dmm.write("ABORt")
+    dmm.write("TRIG:SOUR BUS")
+    dmm.write(f"TRIG:COUN {bursts}")
+    dmm.write("INITiate")
+
+
+def burst(dmms):
+    for d in dmms:
+        d.write("*TRG")
+    time.sleep(BURST_S)
 
 
 def main():
@@ -83,13 +130,14 @@ def main():
     # PhaseShift_* so loss_breakdown finds it; not PhaseShift_Voltage_* (those configs are git-tracked)
     cfg_path = os.path.join(run_dir, f"PhaseShift_SinglePoint_{int(vbus)}V_Freq{freq // 1000}kHz.json")
     json.dump(cfg, open(cfg_path, "w"), indent=4)
+    measures = cfg["ScopeAutoMeasure"]
 
     print(f"\nSingle point: {freq / 1000:g} kHz, Ipeak {args.ipeak} A at {vbus:g} V -> phase {phase} deg "
           f"(initial {initial} deg), dead time {cfg['DeadTimePWM']} ns, duty {cfg['DutyPWM']}")
     print(f"Results: {run_dir}")
     print("The supply is NOT driven by this script: press REM on the supply to go to LOCAL, "
           f"set its current limit (configs: {cfg['CurrentLimit']} A) and keep it at 0 V for now.")
-    input(">>> Press Enter to set up the SPIN, scopes and DMMs (Ctrl-C to cancel) ")
+    input(">>> Enter: set up the SPIN, scopes and DMMs (Ctrl-C to cancel) ")
 
     rm = visa.ResourceManager()
     s1 = SDS2104X_plus(cfg_path, ressource_manager=rm, address=cfg["AddressOSCILLO"])
@@ -101,7 +149,8 @@ def main():
         if s:
             s.result_output_path = run_dir
     shield = None
-    measured = False
+    scope_before = scope_during = None
+    t_step = None
 
     def cmd(*a, **k):
         r = shield.sendCommand(*a, **k)
@@ -131,32 +180,39 @@ def main():
             cmd("DEADTIME_COMP", "ON" if cfg["DeadTimeComp"] else "OFF")
         cmd("PHASE_SHIFT", "LEG2", initial)
 
-        # Scopes live while the operator ramps; DMMs armed now (they need dmm_init_delay)
-        s1.free_run()
+        live_view(s1, measures)
         if s2:
             s2.free_run()
         di.dmm_setup_current_testbench()
         dv.dmm_setup_voltage_testbench()
+        dmms = (dv.dmm_for_voltage, di.dmm_for_current)
+        for d in dmms:
+            dmm_arm_software(d, bursts=2)
         armed_at = time.time()
 
-        input(f"\n>>> Legs are switching at {initial} deg. Raise the supply to {vbus:g} V, "
-              "check Vbus, then press Enter to measure ")
-        s1.oscilloscope_setup()              # arm scope 1 for one frame (screen waits for the trigger)
-        time.sleep(1)
+        input(f"\n>>> Legs switching at {initial} deg, scopes live. Raise the supply to {vbus:g} V, "
+              "check Vbus, then Enter ")
         wait = cfg.get("dmm_init_delay", 4) - (time.time() - armed_at)
         if wait > 0:
             print(f"  waiting {wait:.1f} s more for the DMMs to be ready")
             time.sleep(wait)
+        burst(dmms)                                    # BEFORE, at the initial phase
+        scope_before = read_scope(s1, measures)
+        print(f"  BEFORE ({initial} deg): scope {fmt(scope_before)}")
 
-        cmd("PHASE_SHIFT", "LEG2", phase, delay=cfg.get("delay_com", 0.6))
-        time.sleep(0.4)                     # a 30-sample burst takes 0.30-0.45 s
-        cmd("PHASE_SHIFT", "LEG2", initial)  # back to low current right away
-        s1.oscilloscope_save_results()       # read the frame before the scope goes live again
-        s1.oscilloscope_setup_clean()        # scope 1 live (AUTO)
-        measured = True
-        print("  measured, scope 1 live again.")
+        input(f"\n>>> Enter: phase step {initial} -> {phase} deg (watch scope 1) ")
+        cmd("PHASE_SHIFT", "LEG2", phase)
+        t_step = time.time()
+        time.sleep(cfg.get("delay_com", 0.6))         # settle, as the supervisor's plateau
+        burst(dmms)                                    # DURING, at the measurement phase
+        scope_during = read_scope(s1, measures)
+        print(f"  DURING ({phase} deg): scope {fmt(scope_during)}")
 
-        input(f"\n>>> Lower the supply to 0 V, then press Enter ")
+        input(f"\n>>> Holding {phase} deg. Enter: back to {initial} deg ")
+        print(f"  held {time.time() - t_step:.1f} s")
+        cmd("PHASE_SHIFT", "LEG2", initial)
+
+        input(f"\n>>> Lower the supply to 0 V, then Enter ")
     except KeyboardInterrupt:
         print("\nInterrupted.")
     finally:
@@ -169,12 +225,12 @@ def main():
             shield.close()
 
     try:
-        if measured:
-            save(run_dir, s2, di, dv)
+        if scope_during is not None:
+            save(run_dir, s2, di, dv, scope_before, scope_during, initial, phase)
         else:
-            print("No measurement taken: nothing saved.")
+            print("No measurement taken during the step: nothing saved.")
     finally:
-        for f in (lambda: s1.oscilloscope_setup_clean(), (s2.free_run if s2 else None), s1.close_oscilloscope,
+        for f in (s1.oscilloscope_setup_clean, (s2.free_run if s2 else None), s1.close_oscilloscope,
                   (s2.close_oscilloscope if s2 else None), di.close_dmm_for_current, dv.close_dmm_for_voltage):
             if f:
                 try:
@@ -183,22 +239,32 @@ def main():
                     pass
 
 
-def save(run_dir, s2, di, dv):
+def fmt(meas):
+    return ", ".join(f"{m['type']} C{m['channel']} {m['value']:.4g}" if m["value"] is not None
+                     else f"{m['type']} C{m['channel']} n/a" for m in meas.values())
+
+
+def save(run_dir, s2, di, dv, scope_before, scope_during, initial, phase):
     tool = TOOL()
     v = dv.dmm_get_buffer(dv.dmm_for_voltage, wait_meas_complete=False)
     i = di.dmm_get_buffer(di.dmm_for_current, wait_meas_complete=False)
-    tool.export_result_to_csv(str(v), "Voltage", run_dir)
-    tool.export_result_to_csv(str(i), "Current", run_dir)
+    v_before, v_during, i_before, i_during = v[:30], v[30:], i[:30], i[30:]
+    # DURING is the measurement point (what loss_breakdown reads: '-Voltage'/'-Current', Data1)
+    tool.export_result_to_csv(str(v_during), "Voltage", run_dir)
+    tool.export_result_to_csv(str(i_during), "Current", run_dir)
+    tool.export_result_to_csv(str(v_before), "BeforeStepV", run_dir)
+    tool.export_result_to_csv(str(i_before), "BeforeStepI", run_dir)
+    json.dump({"Data1": scope_during, "BeforeStep": scope_before}, open(os.path.join(run_dir, "results.json"), "w"), indent=4)
     if s2:
         s2.oscilloscope_save_picture("SinglePoint_High")   # live screen of scope 2, for the record
 
     mean = lambda xs: sum(xs) / len(xs) if xs else float("nan")
-    res = json.load(open(os.path.join(run_dir, "results.json")))
-    frame = {m["type"]: m["value"] for m in res.get("Data1", {}).values()}
-    vb, idc = mean(v), mean(i)
-    print(f"\nDMM: {len(v)} voltage, {len(i)} current readings (30 expected each)")
-    print(f"Vbus {vb:.3f} V, Idc {idc:.4f} A, Pin {vb * idc:.3f} W")
-    print(f"Scope 1: {frame}  -> Ipeak = AMPL/2 = {frame.get('AMPL') / 2 if frame.get('AMPL') else 'n/a'} A")
+    print(f"\nDMM readings: voltage {len(v_before)} + {len(v_during)}, current {len(i_before)} + {len(i_during)} (30 + 30 expected)")
+    for label, vv, ii, sc, ph in (("BEFORE", v_before, i_before, scope_before, initial), ("DURING", v_during, i_during, scope_during, phase)):
+        vb, idc = mean(vv), mean(ii)
+        ampl = next((m["value"] for m in sc.values() if m["type"] == "AMPL"), None)
+        print(f"{label} {ph:>6} deg: Vbus {vb:.3f} V, Idc {idc:.4f} A, Pin {vb * idc:.3f} W, "
+              f"Ipeak = AMPL/2 = {ampl / 2 if ampl else float('nan'):.3f} A")
     print(f"Saved in {run_dir}")
     print(f"Processing: python3 calculations/loss_breakdown.py {os.path.dirname(os.path.dirname(run_dir))}")
 

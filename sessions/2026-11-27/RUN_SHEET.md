@@ -19,15 +19,17 @@ Everything below runs from the root of branch `session-2026-11-27`.
 
 ## 0b. First power: one point, supply by hand
 
-`tools/single_point_manual.py` does one current step without touching the supply (it stays in LOCAL: press REM).
-It sets up the SPIN and arms the scopes and DMMs, waits while you raise the supply, takes one point (one phase write = one trigger), puts the phase back to 3°, waits while you lower the supply, then stops the legs and saves in the supervisor's layout.
+`tools/single_point_manual.py` does one current step without touching the supply (it stays in LOCAL: press REM). Every step waits for Enter.
+Scope 1 stays live the whole time (AUTO, triggered on the gate C1, FREQ/AMPL/RMS shown without statistics): you see the phase step happen, no screen reset.
+The DMMs are triggered by software for this script: one 30-reading burst **before** the step (initial 3°) and one **during** (measurement phase), each with live scope values.
+Sequence: Enter (setup, legs at 3°) → raise the supply, Enter (BEFORE burst) → Enter (phase step, DURING burst; the phase is held) → Enter (back to 3°) → lower the supply, Enter (legs off, IDLE, saved).
 
 ```bash
 MPLBACKEND=Agg python3 tools/single_point_manual.py                  # 50 kHz, 0.5 A peak, 60 V
 MPLBACKEND=Agg python3 tools/single_point_manual.py --ipeak 1.0      # next point
 ```
 
-Check: 30 readings per DMM, scope 1 AMPL/2 near the asked Ipeak, Vbus and Idc in the summary. Ctrl-C stops the legs.
+Check: 30 + 30 readings per DMM, Vbus/Idc/Pin before and during, scope 1 AMPL/2 near the asked Ipeak during. Ctrl-C stops the legs.
 
 ## 1. Anchors first: 50, 60, 70 kHz (≈ 10 min)
 
